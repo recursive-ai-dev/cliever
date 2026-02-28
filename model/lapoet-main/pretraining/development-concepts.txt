@@ -1,0 +1,159 @@
+A function is a reusable block of code that performs a specific task.
+Variables store data values that can be used throughout the program.
+Constants are variables whose values cannot be changed after declaration.
+Arrays are ordered collections of elements accessible by index.
+Objects are collections of key value pairs representing entities.
+Classes define blueprints for creating objects with properties and methods.
+Inheritance allows classes to derive properties from parent classes.
+Polymorphism enables objects to take multiple forms through interfaces.
+Encapsulation hides internal implementation details from external access.
+Abstraction simplifies complex systems by hiding unnecessary details.
+An API is an application programming interface for software interaction.
+REST APIs use HTTP methods for creating reading updating deleting resources.
+JSON is a lightweight data interchange format using key value pairs.
+XML is a markup language for storing and transporting data.
+A database stores structured data for efficient retrieval and manipulation.
+SQL is a query language for managing relational databases.
+NoSQL databases store data in non tabular formats like documents or graphs.
+Indexes improve database query performance by creating fast lookup structures.
+Transactions ensure database operations complete fully or not at all.
+ACID properties guarantee database reliability through atomicity consistency isolation durability.
+A primary key uniquely identifies each record in a database table.
+Foreign keys establish relationships between tables.
+Normalization organizes database structure to reduce redundancy.
+Denormalization optimizes read performance by introducing controlled redundancy.
+A view is a virtual table derived from query results.
+Stored procedures are precompiled SQL code stored in the database.
+Triggers automatically execute code when specific database events occur.
+HTTP is the protocol for transferring data over the web.
+HTTPS adds encryption layer for secure HTTP communication.
+Status codes indicate the result of HTTP requests.
+GET requests retrieve data from servers.
+POST requests send data to create new resources.
+PUT requests update existing resources completely.
+PATCH requests partially update existing resources.
+DELETE requests remove resources from servers.
+Headers provide metadata about HTTP requests and responses.
+Cookies store small data pieces on client side.
+Sessions maintain user state across multiple requests.
+Authentication verifies user identity.
+Authorization determines user access permissions.
+JWT tokens encode user claims for stateless authentication.
+OAuth enables third party authentication without sharing passwords.
+CORS allows or restricts cross origin resource sharing.
+Rate limiting controls request frequency to prevent abuse.
+Caching stores frequently accessed data for faster retrieval.
+CDN distributes content across multiple geographic locations.
+Load balancing distributes traffic across multiple servers.
+Horizontal scaling adds more machines to handle increased load.
+Vertical scaling increases resources of existing machines.
+Microservices architecture splits applications into independent services.
+Monolithic architecture combines all components into single application.
+Container technology packages applications with dependencies for consistent deployment.
+Docker creates lightweight isolated containers for applications.
+Kubernetes orchestrates containerized applications at scale.
+CI CD automates code integration testing and deployment.
+Version control tracks changes to code over time.
+Git is a distributed version control system.
+A repository stores project code and history.
+Branches allow parallel development of features.
+Commits are snapshots of code changes.
+Merging combines changes from different branches.
+Conflicts occur when changes overlap in merges.
+Pull requests propose code changes for review.
+Code review examines changes for quality and correctness.
+Linting checks code for style and potential errors.
+Testing verifies code behaves as expected.
+Unit tests check individual functions or components.
+Integration tests verify multiple components work together.
+End to end tests validate complete user workflows.
+Test driven development writes tests before implementation code.
+Code coverage measures percentage of code executed by tests.
+Debugging identifies and fixes code errors.
+Breakpoints pause code execution for inspection.
+Stack traces show function call sequence leading to errors.
+Logging records program events for monitoring and debugging.
+Profiling measures code performance and resource usage.
+Optimization improves code speed or resource efficiency.
+Algorithms are step by step procedures for solving problems.
+Data structures organize data for efficient access and modification.
+Time complexity measures algorithm speed relative to input size.
+Space complexity measures memory usage relative to input size.
+Big O notation expresses worst case complexity.
+Recursion solves problems by calling function on itself.
+Iteration repeats operations using loops.
+Sorting arranges elements in specific order.
+Searching finds specific elements in collections.
+Hash tables provide constant time average case lookups.
+Trees organize hierarchical data with nodes and edges.
+Graphs represent networks of connected nodes.
+Queues follow first in first out ordering.
+Stacks follow last in first out ordering.
+Linked lists store elements with pointers to next elements.
+Binary search efficiently finds elements in sorted arrays.
+Depth first search explores graph branches completely before backtracking.
+Breadth first search explores graph level by level.
+Dynamic programming solves problems by breaking into overlapping subproblems.
+Greedy algorithms make locally optimal choices at each step.
+Divide and conquer splits problems into smaller independent subproblems.
+Asynchronous code executes without blocking other operations.
+Synchronous code executes sequentially blocking until completion.
+Callbacks are functions passed as arguments to other functions.
+Promises represent eventual completion or failure of async operations.
+Async await syntax simplifies working with promises.
+Event loops manage asynchronous operations in JavaScript.
+Threads allow concurrent execution within processes.
+Processes are independent executing instances of programs.
+Race conditions occur when multiple threads access shared data unpredictably.
+Deadlocks happen when processes wait indefinitely for each other.
+Mutexes prevent simultaneous access to shared resources.
+Semaphores control access to resources with limited capacity.
+Garbage collection automatically frees unused memory.
+Memory leaks occur when memory is not properly released.
+Stack memory stores local variables and function calls.
+Heap memory stores dynamically allocated objects.
+Pointers store memory addresses of variables.
+References are aliases to existing variables.
+Compilation translates source code to machine code.
+Interpretation executes code line by line at runtime.
+Just in time compilation compiles code during execution.
+Static typing checks types at compile time.
+Dynamic typing checks types at runtime.
+Type inference automatically determines variable types.
+Strongly typed languages enforce strict type rules.
+Weakly typed languages allow implicit type conversions.
+Functional programming treats computation as evaluation of functions.
+Object oriented programming organizes code around objects.
+Procedural programming structures code as procedures or routines.
+Declarative programming describes what to compute.
+Imperative programming describes how to compute.
+Pure functions produce same output for same input without side effects.
+Side effects modify state outside function scope.
+Immutability prevents data modification after creation.
+Higher order functions take functions as arguments or return functions.
+Closures are functions that capture surrounding scope.
+Scope determines variable visibility and lifetime.
+Hoisting moves declarations to top of scope.
+The event driven model responds to events with handlers.
+Observer pattern defines subscription mechanism for state changes.
+Singleton pattern ensures class has only one instance.
+Factory pattern creates objects without specifying exact class.
+Strategy pattern defines family of interchangeable algorithms.
+Decorator pattern adds behavior to objects dynamically.
+Dependency injection provides dependencies from outside.
+SOLID principles guide object oriented design.
+Single responsibility principle assigns one reason to change per class.
+Open closed principle allows extension without modification.
+Liskov substitution principle enables subtype substitution.
+Interface segregation principle prefers specific interfaces over general ones.
+Dependency inversion principle depends on abstractions not concretions.
+DRY principle avoids code duplication.
+KISS principle keeps solutions simple and straightforward.
+YAGNI principle implements only necessary features.
+Separation of concerns divides program into distinct sections.
+Coupling measures interdependence between modules.
+Cohesion measures how related module elements are.
+Technical debt represents future cost of quick solutions.
+Refactoring restructures code without changing behavior.
+Code smells indicate potential design problems.
+Design patterns provide reusable solutions to common problems.

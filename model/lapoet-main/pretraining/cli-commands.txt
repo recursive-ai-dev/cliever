@@ -1,0 +1,126 @@
+Install package manager dependencies with npm install.
+Run the development server using npm run dev.
+Build the production bundle with npm run build.
+Execute tests with npm test or npm run test.
+List installed packages using npm list.
+Update dependencies with npm update.
+Check for outdated packages using npm outdated.
+Initialize a new project with npm init.
+Clone a repository using git clone followed by the URL.
+Check git status with git status.
+Add files to staging with git add filename.
+Commit changes using git commit with message flag.
+Push commits to remote with git push origin branch.
+Pull latest changes with git pull origin branch.
+Create new branch using git branch name or git checkout with branch flag.
+Merge branches with git merge branchname.
+View commit history using git log.
+Check differences with git diff.
+Reset changes with git reset followed by commit hash.
+Stash uncommitted changes using git stash.
+Apply stashed changes with git stash pop.
+List all branches with git branch list all flag.
+Delete branch using git branch delete flag branchname.
+Start docker container with docker run image name.
+List running containers using docker ps.
+Stop container with docker stop container id.
+Remove container using docker rm container id.
+Build image with docker build tag flag name dot.
+View docker images with docker images.
+Pull image from registry using docker pull image name.
+Push image to registry with docker push image name.
+Execute command in container using docker exec interactive terminal container id command.
+View container logs with docker logs container id.
+Prune unused resources with docker system prune.
+Create docker compose services with docker compose up.
+Stop compose services using docker compose down.
+List running processes with ps aux.
+Check system resources using top or htop.
+Monitor disk usage with df hyphen h.
+Check directory size using du hyphen sh directory.
+Find files with find dot type f name pattern.
+Search file contents using grep pattern filename.
+Create directory with mkdir directory name.
+Remove directory using rm recursive flag directory name.
+Copy files with cp source destination.
+Move files using mv source destination.
+Change permissions with chmod mode file.
+Change ownership using chown user colon group file.
+View file contents with cat filename.
+Page through file using less filename.
+Display first lines with head filename.
+Show last lines using tail filename.
+Follow log file with tail follow flag filename.
+Create symbolic link using ln symbolic flag target link.
+Archive files with tar create compress file flags archive name dot tar dot gz files.
+Extract archive using tar extract compress file flags archive name.
+Compress with gzip filename.
+Decompress using gunzip filename dot gz.
+Check network connections with netstat.
+Test connectivity using ping hostname.
+Trace route with traceroute hostname.
+Display network config using ifconfig or ip addr.
+View listening ports with ss or netstat.
+Download file with wget url.
+Transfer data using curl url.
+Secure copy with scp source user at host colon destination.
+SSH into server using ssh user at hostname.
+Run command as superuser with sudo command.
+Switch user with su username.
+View environment variables using env or printenv.
+Set variable with export name equals value.
+Display path with echo dollar sign path.
+Check shell with echo dollar sign shell.
+List jobs with jobs command.
+Run process in background using ampersand.
+Bring to foreground with fg job id.
+Kill process using kill pid or kill nine pid.
+Find process with ps aux pipe grep name.
+Monitor system with systemctl status service.
+Start service using systemctl start service name.
+Stop service with systemctl stop service name.
+Enable service on boot using systemctl enable service name.
+View system logs with journalctl.
+Check disk health using smartctl.
+Mount filesystem with mount device mountpoint.
+Unmount with umount mountpoint.
+Check filesystem with fsck device.
+Create partition using fdisk device.
+Format partition with mkfs dot ext4 partition.
+Edit text with nano filename or vim filename.
+Search and replace in file using sed substitute pattern replacement filename.
+Process text with awk script filename.
+Count lines words bytes with wc filename.
+Sort lines using sort filename.
+Remove duplicates with uniq filename.
+Compare files using diff file one file two.
+Display calendar with cal.
+Show date and time using date.
+Schedule task with cron.
+Edit crontab with crontab edit flag.
+Run one time task using at time.
+Display manual pages with man command.
+Show command info using info command.
+Get command help with command help flag.
+Locate command with which command name.
+Search for command using whereis command name.
+Create alias with alias name equals command.
+View aliases using alias.
+Set bash option with set option flag.
+Configure shell with bashrc or zshrc file.
+Source configuration with source filename.
+Clear terminal using clear or control l.
+Exit shell with exit command.
+Display hostname with hostname.
+Show uptime using uptime.
+View logged users with who or w.
+Check last logins using last.
+Display system info with uname all flag.
+Show kernel version using uname release flag.
+Check distribution with cat slash etc slash os release.
+List hardware with lshw or lspci.
+View USB devices using lsusb.
+Monitor CPU with mpstat.
+Check memory with free hyphen h.
+Display block devices using lsblk.
+View filesystem usage with df.

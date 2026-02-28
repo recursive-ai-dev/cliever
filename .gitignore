@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build output
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+test-results/.last-run.json
+test-results/functional-Functional-Inte-6dfce-and-allow-basic-interaction-chromium/error-context.md
+test-results/functional-Functional-Inte-6dfce-and-allow-basic-interaction-firefox/error-context.md
+test-results/functional-Functional-Inte-ae133-d-filter-agents-by-category-chromium/error-context.md
+test-results/functional-Functional-Inte-ae133-d-filter-agents-by-category-firefox/error-context.md
+test-results/functional-Functional-Inte-d90c1-d-copy-command-to-clipboard-chromium/error-context.md
+test-results/functional-Functional-Inte-d90c1-d-copy-command-to-clipboard-firefox/error-context.md
+test-results/functional-Functional-Inte-eecd6-ould-open-agent-detail-view-chromium/error-context.md
+test-results/functional-Functional-Inte-eecd6-ould-open-agent-detail-view-firefox/error-context.md
+test-results/platform-Platform-Selector-d3b25-p-when-platform-is-selected-chromium/error-context.md
+test-results/platform-Platform-Selector-d3b25-p-when-platform-is-selected-firefox/error-context.md
+BATCH_2_COMPLETE.md
+THE_END_GAME.md
+THE_LIST.md
+playwright-report/index.html
+playwright-report/data/5a85e5cd5b43b0e60db4ba8a27b235f83234f4d0.md
+playwright-report/data/8afb20c8c81aa1eb2de9abb75da97d2714633493.md
+playwright-report/data/48a63567aa1768da244159cf6c903047d9c01344.md
+playwright-report/data/76f627dbebabbbd74138b4fe24e6f08ee2d60c90.md
+playwright-report/data/9049bbd74de942b10b601c99c85b4facb4e78eaf.md
+playwright-report/data/926593772016aa5586eb2ed7851b7107c2be30bf.md
+playwright-report/data/d79f3bf7009bfbece0d53c4e462042d7b78eb218.md
+playwright-report/data/ed09a6609561be8f7125cbe6758e6b2d61476718.md
+playwright-report/data/ef63d2f9f1120576a89b50f2ef1d124e917fb456.md
+playwright-report/data/f7f105d7cca644de8b455773d5116ce5b9293b49.md
+scripts/analyze_gaps.py
+scripts/integrity_check.sh
+tests/functional.spec.ts
+tests/platform.spec.ts
+IMPLEMENTATION_SUMMARY.md
+missing_tools.json

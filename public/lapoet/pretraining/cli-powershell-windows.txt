@@ -1,0 +1,69 @@
+PowerShell is object based, not text based.
+Use Get-Help commandName to read syntax and examples.
+Use Get-Command name to discover available commands.
+Get-ChildItem lists files and folders in a directory.
+Set-Location changes the working directory.
+Push-Location and Pop-Location manage a directory stack.
+Resolve-Path turns a relative path into an absolute path.
+Test-Path checks whether a file or folder exists.
+New-Item creates a new file or directory.
+Remove-Item deletes a file or directory, be careful with Recurse.
+Copy-Item copies files, Move-Item moves files.
+Rename-Item renames a file or folder.
+Get-Content reads a file, Set-Content writes a file.
+Add-Content appends to a file.
+Select-String searches text in files like grep.
+Select-String pattern filePath searches for matches.
+Use -SimpleMatch for literal search and -CaseSensitive when needed.
+Use -List to return only the first match per file.
+Use -Context 2,2 to include surrounding lines.
+Where-Object filters objects by a predicate.
+ForEach-Object transforms each object in a pipeline.
+Select-Object picks properties, and can limit rows with First.
+Sort-Object sorts by a property.
+Group-Object groups objects by a property.
+Measure-Object computes counts, sums, and averages.
+Format-Table formats output for humans.
+Format-List shows all properties.
+Out-String converts pipeline output to plain text.
+Use Write-Output for pipeline output, not Write-Host.
+$Error shows recent errors.
+$LASTEXITCODE holds the last native process exit code.
+Try catch handles terminating errors.
+Use -ErrorAction Stop to make a command throw.
+Use -ErrorAction SilentlyContinue to suppress noisy errors.
+Use $PSStyle for styling output in newer PowerShell.
+Get-Process lists processes.
+Stop-Process stops a process by id or name.
+Get-Service lists Windows services.
+Start-Service and Stop-Service manage services.
+Get-NetTCPConnection shows open TCP connections.
+Get-NetTCPConnection -LocalPort 5173 can identify port usage.
+Get-ChildItem -Recurse can be expensive on large folders.
+Prefer -Filter when possible for faster filesystem queries.
+Use Join-Path to build paths safely.
+Quote paths with spaces.
+Use "--%" to stop PowerShell from interpreting arguments for some tools.
+When using npm, run npm -v to confirm Node is installed.
+When npm errors with EACCES, use a user level install approach.
+When a command is not recognized, check PATH and restart the terminal.
+winget can install packages on Windows.
+winget search name finds packages.
+winget install id installs a package.
+Use git from PowerShell the same way as in bash.
+Use npm run dev to start a Vite dev server.
+Use npm run build to produce a production bundle.
+Use npm ci for clean installs in CI.
+Use node --version to confirm runtime.
+When you see ENOENT, it usually means a missing file or folder.
+When you see EADDRINUSE, it means the port is already in use.
+To find processes on a port, use netstat -ano and match the port.
+Then use tasklist /fi "pid eq 1234" to identify the process.
+Then use taskkill /pid 1234 /f to stop it, only if safe.
+Use Get-FileHash to compute a checksum.
+Use Expand-Archive to unzip files.
+Use Compress-Archive to zip files.
+Use Start-Process to launch a program.
+Use Start-Job for background work.
+Use Register-ScheduledTask for recurring automation.
+Prefer least privilege and avoid running everything as Administrator.

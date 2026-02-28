@@ -1,0 +1,41 @@
+Docker packages software into images and runs them as containers.
+docker ps lists running containers.
+docker ps -a lists all containers.
+docker images lists local images.
+docker pull downloads an image.
+docker run starts a container.
+Use docker run -it for interactive terminals.
+Use docker run -p hostPort:containerPort to publish ports.
+Use docker run -v hostPath:containerPath to mount volumes.
+Use docker logs containerName to view logs.
+Use docker exec -it containerName sh to open a shell.
+docker stop stops a container.
+docker rm removes a stopped container.
+docker rmi removes an image.
+docker system prune cleans unused resources.
+Use docker compose for multi-container apps.
+In Node projects, package.json defines scripts and dependencies.
+Use npm install to install dependencies.
+Use npm ci for reproducible installs with a lockfile.
+Use npm run dev to start a dev server.
+Use npm run build to produce a production build.
+Use npm audit to check known vulnerabilities.
+Fix vulnerabilities by upgrading dependencies.
+Avoid npm audit fix --force unless you understand the impact.
+Use npx to run a tool without installing globally.
+Use node --version to check Node.
+Use npm --version to check npm.
+In Python, use python -m venv venv for a virtual environment.
+Activate venv on Windows with venv Scripts activate.
+Activate venv on macOS or Linux with source venv bin activate.
+Use pip install to install dependencies.
+Use pip freeze to list installed packages.
+Use pipx to install CLI tools in isolated environments.
+When a command is not found, check your PATH and activation.
+When ports conflict, choose a different port or stop the process.
+When a build fails, read the first error, not the last one.
+Prefer smaller reproducible steps for debugging.
+If a tool shells out commands, validate inputs for safety.
+Avoid piping curl directly to sh in production.
+If you must, pin to a known checksum or release artifact.
+Use least privilege and avoid running untrusted containers.
