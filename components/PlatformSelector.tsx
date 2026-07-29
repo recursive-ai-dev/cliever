@@ -37,8 +37,14 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({ onSelect }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black overflow-hidden font-mono selection:bg-cyan-500/30">
             {/* Deep Space Background */}
             <div className="absolute inset-0 z-0 bg-[#030014] overflow-hidden">
-                {/* Distant stars */}
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-150 contrast-150"></div>
+                {/* Star texture (pure CSS, no external assets) */}
+                <div
+                    className="absolute inset-0 opacity-25"
+                    style={{
+                        backgroundImage: 'radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.6) 50%, transparent 50%), radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,0.45) 50%, transparent 50%), radial-gradient(1px 1px at 80% 20%, rgba(255,255,255,0.5) 50%, transparent 50%), radial-gradient(1px 1px at 35% 80%, rgba(255,255,255,0.35) 50%, transparent 50%), radial-gradient(1px 1px at 90% 60%, rgba(255,255,255,0.4) 50%, transparent 50%), radial-gradient(1px 1px at 10% 55%, rgba(255,255,255,0.3) 50%, transparent 50%)',
+                        backgroundSize: '220px 220px, 300px 300px, 260px 260px, 340px 340px, 280px 280px, 320px 320px'
+                    }}
+                ></div>
 
                 {/* Blue Halo / Nebula */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140vw] h-[140vw] md:w-[1000px] md:h-[1000px] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/40 via-[#0a0a2e]/40 to-transparent blur-[120px] rounded-full animate-pulse-slow mix-blend-screen" />
@@ -122,11 +128,11 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({ onSelect }) => {
 
                 <div className="mt-16 text-center">
                     <div className="text-[10px] text-gray-600 font-mono flex items-center justify-center gap-6">
-                        <span>v2.4.0-RC1</span>
+                        <span>v2.5.0</span>
                         <span className="w-1 h-1 rounded-full bg-gray-800" />
-                        <span>SECURE CONNECTION</span>
+                        <span>FULLY OFFLINE-CAPABLE</span>
                         <span className="w-1 h-1 rounded-full bg-gray-800" />
-                        <span>ENCRYPTION: AES-256</span>
+                        <span>NO API KEYS REQUIRED</span>
                     </div>
                 </div>
             </div>

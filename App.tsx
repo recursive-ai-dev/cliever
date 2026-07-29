@@ -7,25 +7,53 @@ import AgentCard from './components/AgentCard';
 import AgentDetailLayer from './components/AgentDetailLayer';
 import ComparisonLayer from './components/ComparisonLayer';
 import TakeBundleLayer from './components/TakeBundleLayer';
-// CollaborationLayer is available for future squad UI but not rendered in the current layout.
+import CollaborationLayer from './components/CollaborationLayer';
+import CommandGenerator from './components/CommandGenerator';
+import TelemetryLayer from './components/TelemetryLayer';
 import ThemeSelector from './components/ThemeSelector';
 import { applyTheme, getStoredTheme } from './utils/theme';
 import {
   Search, MessageSquare,
   ArrowUpDown, Terminal, X, Tag,
-  Wifi, ChevronLeft, ChevronRight, RefreshCw, Activity
+  Wifi, ChevronLeft, ChevronRight, RefreshCw, Activity,
+  Users, SquareTerminal, Gauge
 } from 'lucide-react';
 import { askExpert } from './services/localModelService';
 import { AnalyticsService, AnalyticsEventType } from './services/analyticsService';
 import { RegistrySyncService } from './services/syncService';
 import { ReviewStorage, VerificationStorage } from './services/storageService';
 import { VerificationService } from './services/verificationService';
+import { logger } from './services/logger';
+import { validateAgents, sanitizeAgent } from './utils/validation';
 import { sanitizeChatMessage, sanitizeSearchQuery, getErrorMessage } from './utils/sanitization';
 
 
 import { agentMatchesQuery } from './utils/search';
 import PlatformSelector from './components/PlatformSelector';
 import { isAgentCompatible, Platform } from './utils/platform';
+
+/**
+ * Validate the static registry once at module load (schema integrity gate).
+ * Invalid entries are dropped and reported; valid ones pass through
+ * sanitization so every consumer sees clamped, well-formed data.
+ */
+const BOOT_REGISTRY: Agent[] = (() => {
+  const { valid, invalid, warnings } = validateAgents(AGENTS);
+  if (invalid.length > 0) {
+    logger.error('Registry validation dropped invalid entries', {
+      dropped: invalid.map(entry => ({ index: entry.index, errors: entry.errors }))
+    });
+  }
+  if (warnings.length > 0) {
+    logger.warn('Registry validation warnings', { warnings: warnings.slice(0, 10), total: warnings.length });
+  }
+  logger.info('Registry boot validation complete', {
+    total: AGENTS.length,
+    valid: valid.length,
+    invalid: invalid.length
+  });
+  return valid.map(sanitizeAgent);
+})();
 
 /**
  * Validates and merges reviews from storage with agent data
@@ -72,7 +100,7 @@ const App: React.FC = () => {
 
   // Initialize agents with stored reviews
   const [agents, setAgents] = useState<Agent[]>(() =>
-    AGENTS.map(a => {
+    BOOT_REGISTRY.map(a => {
       const withRuntime = {
         ...a,
         status: 'LIVE' as AgentStatus,
@@ -95,6 +123,11 @@ const App: React.FC = () => {
 
   // Squad State
   const [squad, setSquad] = useState<Agent[]>([]);
+  const [showCollab, setShowCollab] = useState(false);
+
+  // System Tool Modals
+  const [showCommandGenerator, setShowCommandGenerator] = useState(false);
+  const [showTelemetry, setShowTelemetry] = useState(false);
 
   // Bundle State (commands-only persistence)
   const [bundledAgentIds, setBundledAgentIds] = useState<string[]>(() => {
@@ -160,6 +193,24 @@ const App: React.FC = () => {
     setSquad(prev => prev.some(s => s.id === a.id) ? prev.filter(s => s.id !== a.id) : [...prev, a]);
   }, []);
 
+  const handleOpenCollab = React.useCallback(() => {
+    setShowCollab(true);
+    AnalyticsService.trackEvent(AnalyticsEventType.COLLABORATION_STARTED, {
+      squadSize: squad.length,
+      agentIds: squad.map(s => s.id)
+    });
+  }, [squad]);
+
+  const handleOpenComparison = React.useCallback(() => {
+    setShowComparison(true);
+    if (compareAgentA && compareAgentB) {
+      AnalyticsService.trackEvent(AnalyticsEventType.COMPARISON_STARTED, {
+        agentA: compareAgentA.id,
+        agentB: compareAgentB.id
+      });
+    }
+  }, [compareAgentA, compareAgentB]);
+
   const handleToggleCompare = React.useCallback((a: Agent) => {
     if (compareAgentA?.id === a.id) setCompareAgentA(null);
     else if (compareAgentB?.id === a.id) setCompareAgentB(null);
@@ -215,12 +266,29 @@ const App: React.FC = () => {
       });
 
       // Track analytics
-      AnalyticsService.trackEvent(AnalyticsEventType.AGENT_VIEW, {
-        action: 'review_added',
+      AnalyticsService.trackEvent(AnalyticsEventType.REVIEW_ADDED, {
         agentId,
         rating: review.rating
       });
     }
+  }, []);
+
+  /**
+   * Delete a locally-stored review
+   */
+  const handleDeleteReview = useCallback((agentId: string, reviewId: string) => {
+    const deleted = ReviewStorage.deleteReview(agentId, reviewId);
+    if (!deleted) return;
+
+    const withoutReview = (agent: Agent): Agent =>
+      agent.id === agentId
+        ? { ...agent, reviews: (agent.reviews || []).filter(r => r.id !== reviewId) }
+        : agent;
+
+    setAgents(prev => prev.map(withoutReview));
+    setSelectedAgent(prev => (prev ? withoutReview(prev) : prev));
+
+    AnalyticsService.trackEvent(AnalyticsEventType.REVIEW_DELETED, { agentId });
   }, []);
 
   /**
@@ -231,7 +299,6 @@ const App: React.FC = () => {
     setSelectedAgent(prev => (prev && prev.id === agentId ? { ...prev, ...patch } : prev));
   }, []);
 
-  // Filter & Sort Logic (Memoized for performance)
   // Filter & Sort Logic (Memoized for performance)
   const sortedFilteredAgents = useMemo(() => {
     const result = agents.filter(agent => {
@@ -266,15 +333,13 @@ const App: React.FC = () => {
     return sortedFilteredAgents.slice(start, start + itemsPerPage);
   }, [sortedFilteredAgents, currentPage]);
 
-  useEffect(() => {
-    if (totalPages === 0 && currentPage !== 1) {
-      setCurrentPage(1);
-      return;
-    }
-    if (totalPages > 0 && currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [totalPages, currentPage]);
+  // Clamp the page when filters shrink the result set. This adjust-during-render
+  // pattern is the React-sanctioned alternative to a setState-in-effect loop.
+  if (totalPages === 0 && currentPage !== 1) {
+    setCurrentPage(1);
+  } else if (totalPages > 0 && currentPage > totalPages) {
+    setCurrentPage(totalPages);
+  }
 
   // Initialize analytics and log production readiness on mount
   useEffect(() => {
@@ -471,7 +536,7 @@ const App: React.FC = () => {
 
       const errorMessage = getErrorMessage(error);
       AnalyticsService.trackError(new Error(errorMessage), { context: 'chat_submit' }, 'medium');
-      setChatHistory(prev => [...prev, { role: 'model', text: 'Error: Unable to process request. Check your connection or API key and retry.' }]);
+      setChatHistory(prev => [...prev, { role: 'model', text: 'Error: The local engine could not complete that request. Try rephrasing or retry.' }]);
     } finally {
       if (chatRequestIdRef.current === requestId) {
         setChatLoading(false);
@@ -511,6 +576,53 @@ const App: React.FC = () => {
 
         <div className="flex gap-3 items-center">
           <ThemeSelector />
+          <button
+            onClick={() => setShowTelemetry(true)}
+            className="p-2 rounded-full transition-all border"
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              borderColor: 'var(--border)',
+              color: 'var(--text-secondary)'
+            }}
+            aria-label="Open system telemetry"
+            title="System Telemetry"
+          >
+            <Gauge size={16} />
+          </button>
+          <button
+            onClick={() => setShowCommandGenerator(true)}
+            className="p-2 rounded-full transition-all border"
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              borderColor: 'var(--border)',
+              color: 'var(--text-secondary)'
+            }}
+            aria-label="Open shell command generator"
+            title="Shell Command Generator (Natural Language → Shell)"
+          >
+            <SquareTerminal size={16} />
+          </button>
+          <button
+            onClick={handleOpenCollab}
+            className="relative p-2 rounded-full transition-all border"
+            style={{
+              backgroundColor: squad.length > 0 ? 'var(--accent-glow)' : 'var(--bg-secondary)',
+              borderColor: squad.length > 0 ? 'var(--accent)' : 'var(--border)',
+              color: squad.length > 0 ? 'var(--accent)' : 'var(--text-secondary)'
+            }}
+            aria-label={`Open Mission Control (${squad.length} agents in squad)`}
+            title="Mission Control (Multi-Agent Squad)"
+          >
+            <Users size={16} />
+            {squad.length > 0 && (
+              <span
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-mono font-bold flex items-center justify-center"
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--bg-primary)' }}
+              >
+                {squad.length}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => setShowTakeBundle(true)}
             className="flex items-center gap-2 px-3 sm:px-4 py-2 border rounded-lg text-xs font-mono transition-all"
@@ -565,6 +677,8 @@ const App: React.FC = () => {
               borderColor: 'var(--border)',
               boxShadow: chatOpen ? '0 0 20px var(--accent-glow)' : 'none'
             }}
+            aria-label={chatOpen ? 'Close system chat' : 'Open system chat'}
+            title="System Chat"
           >
             <MessageSquare size={18} />
           </button>
@@ -573,6 +687,7 @@ const App: React.FC = () => {
             className="p-2 rounded-full transition-all border border-dashed"
             style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)' }}
             title={`Change Platform (Current: ${globalPlatform})`}
+            aria-label={`Change platform, currently ${globalPlatform}`}
           >
             <Terminal size={18} />
           </button>
@@ -628,6 +743,7 @@ const App: React.FC = () => {
                 }}
                 className="w-full rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none font-mono shadow-inner transition-all"
                 style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                aria-label="Search registry"
               />
             </div>
 
@@ -638,6 +754,7 @@ const App: React.FC = () => {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="w-full appearance-none rounded-xl pl-11 pr-8 py-3 text-sm focus:outline-none font-mono cursor-pointer"
                 style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+                aria-label="Sort agents"
               >
                 <option>Stars (High-Low)</option>
                 <option>Stars (Low-High)</option>
@@ -675,6 +792,7 @@ const App: React.FC = () => {
               disabled={currentPage === 1}
               className="p-2 rounded-lg transition-all disabled:opacity-20"
               style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+              aria-label="Previous page"
             >
               <ChevronLeft size={20} />
             </button>
@@ -689,6 +807,7 @@ const App: React.FC = () => {
               disabled={currentPage === totalPages}
               className="p-2 rounded-lg transition-all disabled:opacity-20"
               style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+              aria-label="Next page"
             >
               <ChevronRight size={20} />
             </button>
@@ -703,6 +822,7 @@ const App: React.FC = () => {
           onClose={() => setSelectedAgent(null)}
           onCompare={(a) => { setCompareAgentA(a); setSelectedAgent(null); }}
           onAddReview={handleAddReview}
+          onDeleteReview={handleDeleteReview}
           onVerificationUpdate={handleVerificationUpdate}
           isBundled={bundledAgentIds.includes(selectedAgent.id)}
           onToggleBundle={handleToggleBundle}
@@ -718,8 +838,24 @@ const App: React.FC = () => {
         />
       )}
 
+      {showCollab && (
+        <CollaborationLayer
+          squad={squad}
+          onClose={() => setShowCollab(false)}
+          onRemoveFromSquad={handleToggleSquad}
+        />
+      )}
+
+      {showCommandGenerator && (
+        <CommandGenerator onClose={() => setShowCommandGenerator(false)} />
+      )}
+
+      {showTelemetry && (
+        <TelemetryLayer onClose={() => setShowTelemetry(false)} />
+      )}
+
       {(compareAgentA || compareAgentB) && !showComparison && (
-        <div className="fixed bottom-6 left-4 right-4 md:right-8 md:left-auto z-40 backdrop-blur-xl p-4 rounded-2xl shadow-2xl flex flex-col md:flex-row md:items-center gap-4 md:gap-6 animate-in slide-in-from-bottom-10 max-w-sm md:max-w-none"
+        <div className="fixed bottom-6 left-4 right-4 md:right-8 md:left-auto z-40 backdrop-blur-xl p-4 rounded-2xl shadow-2xl flex flex-col md:flex-row md:items-center gap-4 md:gap-6 animate-slide-in-up max-w-sm md:max-w-none"
           style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--accent)' }}>
           <div className="flex flex-col">
             <span className="text-[10px] font-mono uppercase" style={{ color: 'var(--accent)' }}>Comparison Queue</span>
@@ -733,14 +869,14 @@ const App: React.FC = () => {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setShowComparison(true)}
+              onClick={handleOpenComparison}
               disabled={!compareAgentA || !compareAgentB}
               className="px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all disabled:opacity-30"
               style={{ backgroundColor: 'var(--accent)', color: 'var(--bg-primary)' }}
             >
               Analyze
             </button>
-            <button onClick={() => { setCompareAgentA(null); setCompareAgentB(null); }} className="p-2" style={{ color: 'var(--text-muted)' }}><X size={16} /></button>
+            <button onClick={() => { setCompareAgentA(null); setCompareAgentB(null); }} className="p-2" style={{ color: 'var(--text-muted)' }} aria-label="Clear comparison queue"><X size={16} /></button>
           </div>
         </div>
       )}
@@ -756,14 +892,14 @@ const App: React.FC = () => {
 
       {/* Persistent System Chat */}
       {chatOpen && (
-        <div className="fixed inset-x-4 md:left-auto md:right-8 bottom-20 w-auto md:w-96 max-w-[640px] h-[65vh] md:h-[500px] rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden animate-in slide-in-from-bottom-5"
+        <div className="fixed inset-x-4 md:left-auto md:right-8 bottom-20 w-auto md:w-96 max-w-[640px] h-[65vh] md:h-[500px] rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden animate-slide-in-up"
           style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
           <div className="p-4 flex justify-between items-center" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
             <span className="text-[10px] font-mono font-bold flex items-center gap-2 uppercase tracking-[0.2em]" style={{ color: 'var(--accent)' }}>
               <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--success)' }}></div>
               Terminal_Guardian
             </span>
-            <button onClick={() => setChatOpen(false)} style={{ color: 'var(--text-muted)' }}><X size={14} /></button>
+            <button onClick={() => setChatOpen(false)} style={{ color: 'var(--text-muted)' }} aria-label="Close chat"><X size={14} /></button>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono text-xs">
             {chatHistory.map((msg, idx) => (
@@ -788,6 +924,7 @@ const App: React.FC = () => {
                 const sanitized = sanitizeChatMessage(e.target.value);
                 setChatInput(sanitized);
               }}
+              aria-label="Chat with the local engine"
             />
           </form>
         </div>

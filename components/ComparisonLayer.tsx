@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Agent } from '../types';
 import { X, Sparkles, Code, Star, Box, List, Terminal } from 'lucide-react';
 import { compareAgents } from '../services/localModelService';
+import MarkdownText from '../utils/markdown';
 
 interface ComparisonLayerProps {
     agentA: Agent;
@@ -10,29 +11,50 @@ interface ComparisonLayerProps {
     onClear: () => void;
 }
 
+interface ComparisonOutcome {
+    pair: string;
+    result: string;
+    error: string | null;
+}
+
 const ComparisonLayer: React.FC<ComparisonLayerProps> = ({ agentA, agentB, onClose, onClear }) => {
-    const [result, setResult] = useState<string>('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const requestIdRef = useRef<number>(0);
-    const abortRef = useRef<AbortController | null>(null);
+    const [outcome, setOutcome] = useState<ComparisonOutcome | null>(null);
+
+    // Result/error/loading are all derived from pair-keyed outcome state, so
+    // changing the pair automatically invalidates what is rendered — no
+    // synchronous state resets inside effects required.
+    const pairKey = agentA && agentB ? `${agentA.id}:${agentB.id}` : null;
+    const result = outcome && pairKey && outcome.pair === pairKey ? outcome.result : '';
+    const error = outcome && pairKey && outcome.pair === pairKey ? outcome.error : null;
+    const loading = pairKey !== null && (!outcome || outcome.pair !== pairKey);
 
     useEffect(() => {
-        if (agentA && agentB) {
-            setResult('');
-            setError(null);
-            runComparison();
-        } else {
-            setResult('');
-            setError(null);
-        }
-    }, [agentA, agentB]); // eslint-disable-line react-hooks/exhaustive-deps
+        if (!agentA || !agentB) return;
 
-    useEffect(() => {
+        const pair = `${agentA.id}:${agentB.id}`;
+        const controller = new AbortController();
+        let active = true;
+
+        // State updates happen in promise callbacks (external-system
+        // notification), never synchronously in the effect body.
+        compareAgents(agentA, agentB, { signal: controller.signal })
+            .then(res => {
+                if (active) setOutcome({ pair, result: res, error: null });
+            })
+            .catch((err: unknown) => {
+                if (!active) return;
+                if ((err as Error)?.name === 'AbortError') {
+                    setOutcome({ pair, result: '', error: 'Comparison cancelled.' });
+                    return;
+                }
+                setOutcome({ pair, result: '', error: 'Comparison failed. Please retry.' });
+            });
+
         return () => {
-            abortRef.current?.abort('component-unmount');
+            active = false;
+            controller.abort('pair-changed-or-unmount');
         };
-    }, []);
+    }, [agentA, agentB]);
 
     useEffect(() => {
         const prevOverflow = document.body.style.overflow;
@@ -51,35 +73,6 @@ const ComparisonLayer: React.FC<ComparisonLayerProps> = ({ agentA, agentB, onClo
         };
     }, [onClose]);
 
-    const runComparison = async () => {
-        if (!agentA || !agentB) return;
-        abortRef.current?.abort('replaced');
-        const controller = new AbortController();
-        abortRef.current = controller;
-        const requestId = Date.now();
-        requestIdRef.current = requestId;
-
-        setLoading(true);
-        setError(null);
-
-        try {
-            const res = await compareAgents(agentA, agentB, { signal: controller.signal });
-            if (requestIdRef.current !== requestId) return;
-            setResult(res);
-        } catch (err) {
-            if (requestIdRef.current !== requestId) return;
-            if ((err as Error)?.name === 'AbortError') {
-                setError('Comparison cancelled.');
-                return;
-            }
-            setError('Comparison failed. Please retry.');
-        } finally {
-            if (requestIdRef.current === requestId) {
-                setLoading(false);
-            }
-        }
-    };
-
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 transform translate-y-0 max-h-[88vh] overflow-y-auto flex flex-col rounded-t-3xl md:rounded-none"
             style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--accent)', boxShadow: '0 -5px 50px rgba(0,0,0,0.9)' }}>
@@ -94,7 +87,7 @@ const ComparisonLayer: React.FC<ComparisonLayerProps> = ({ agentA, agentB, onClo
                         <button onClick={onClear} className="text-sm px-3 py-1 font-mono uppercase transition-colors"
                             style={{ color: 'var(--text-muted)' }}>Reset</button>
                         <button onClick={onClose} className="rounded-full p-1 transition-colors"
-                            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}><X size={20} /></button>
+                            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }} aria-label="Close comparison"><X size={20} /></button>
                     </div>
                 </div>
 
@@ -206,14 +199,12 @@ const ComparisonLayer: React.FC<ComparisonLayerProps> = ({ agentA, agentB, onClo
                                     <p className="font-mono text-sm animate-pulse" style={{ color: 'var(--accent)' }}>Consulting AI Knowledge Base...</p>
                                 </div>
                             ) : (
-                                <div className="prose prose-invert prose-sm max-w-none">
+                                <div>
                                     {error ? (
                                         <div className="font-mono text-sm rounded p-3"
                                             style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--error)', color: 'var(--error)' }}>{error}</div>
                                     ) : (
-                                        <div className="markdown-content whitespace-pre-line leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                                            {result || 'Awaiting comparison output.'}
-                                        </div>
+                                        <MarkdownText content={result || 'Awaiting comparison output.'} className="text-sm" />
                                     )}
                                 </div>
                             )}

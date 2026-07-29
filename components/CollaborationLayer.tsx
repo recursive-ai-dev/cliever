@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Agent } from '../types';
 import { X, Users, Play, Bot, MessageSquare } from 'lucide-react';
 import { simulateCollaboration } from '../services/localModelService';
+import MarkdownText from '../utils/markdown';
 
 interface CollaborationLayerProps {
     squad: Agent[];
@@ -106,6 +107,7 @@ const CollaborationLayer: React.FC<CollaborationLayerProps> = ({ squad, onClose,
                                     placeholder="Describe the task for the squad (e.g., 'Build a full-stack todo app with Python backend and React frontend')"
                                     value={mission}
                                     onChange={(e) => setMission(e.target.value)}
+                                    aria-label="Mission objective"
                                 />
                             </div>
                             <button
@@ -131,10 +133,8 @@ const CollaborationLayer: React.FC<CollaborationLayerProps> = ({ squad, onClose,
                                 <div className="flex items-center gap-2 mb-6 text-sm font-mono uppercase tracking-wider" style={{ color: 'var(--accent)' }}>
                                     <MessageSquare size={16} /> Live Transcript
                                 </div>
-                                <div className="prose prose-invert prose-sm max-w-none space-y-6">
-                                    <div className="markdown-content whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                                        {simulation}
-                                    </div>
+                                <div className="max-w-none space-y-6">
+                                    <MarkdownText content={simulation} className="text-sm leading-relaxed" />
                                 </div>
                             </div>
                         ) : (

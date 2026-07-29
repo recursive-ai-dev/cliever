@@ -88,11 +88,12 @@ class UniversalLinguisticEngine implements ILinguisticEngine {
 ## Build & Development
 
 **Commands** (from [package.json](../package.json)):
-- `npm run dev` - Vite dev server (default port 5173)
+- `npm run dev` - Vite dev server (default port 3000, see `vite.config.ts`)
 - `npm run build` - Production build (outputs to `dist/`)
 - `npm run preview` - Preview production build locally
-
-**No Tests**: Project uses manual validation per [TESTING.md](../TESTING.md) (schema integrity, command copy, filter validation, regression checks). No automated test framework.
+- `npm run typecheck` / `npm run lint` - Strict TS + ESLint (both must stay at zero errors)
+- `npm test` - Offline registry integrity gate (`scripts/validate-registry.mjs`: schema, unique ids/names, categories, URLs, tag vocabulary)
+- `npm run test:e2e` - Playwright smoke suite in `tests/` against the production build (requires `npx playwright install`)
 
 ## Integration Points
 

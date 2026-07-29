@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Terminal, ArrowRight, Copy, Check, X, Sparkles } from 'lucide-react';
+import { Terminal, ArrowRight, Copy, Check, X, Sparkles, AlertCircle } from 'lucide-react';
 import { generateShellCommand } from '../services/localModelService';
+import { copyText } from '../utils/clipboard';
+import MarkdownText from '../utils/markdown';
 
 interface CommandGeneratorProps {
   onClose: () => void;
@@ -10,7 +12,7 @@ const CommandGenerator: React.FC<CommandGeneratorProps> = ({ onClose }) => {
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
 
     useEffect(() => {
         const prevOverflow = document.body.style.overflow;
@@ -39,14 +41,14 @@ const CommandGenerator: React.FC<CommandGeneratorProps> = ({ onClose }) => {
     setLoading(false);
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     // Extract code from markdown block if present, otherwise copy whole text
     const codeMatch = output.match(/```(?:bash|zsh|sh)?\n([\s\S]*?)\n```/);
     const textToCopy = codeMatch?.[1] ?? output;
-    
-    navigator.clipboard.writeText(textToCopy);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+
+    const ok = await copyText(textToCopy);
+    setCopyState(ok ? 'copied' : 'failed');
+    setTimeout(() => setCopyState('idle'), 2000);
   };
 
   return (
@@ -73,17 +75,18 @@ const CommandGenerator: React.FC<CommandGeneratorProps> = ({ onClose }) => {
             <div>
                 <label className="block text-xs font-mono mb-2 uppercase" style={{ color: 'var(--text-muted)' }}>Natural Language Input</label>
                 <form onSubmit={handleGenerate} className="relative">
-                    <input 
+                    <input
                         className="w-full rounded-lg pl-4 pr-12 py-3 text-sm outline-none transition-all shadow-inner font-mono"
-                        style={{ 
-                          backgroundColor: 'var(--bg-primary)', 
-                          border: '1px solid var(--border)', 
-                          color: 'var(--text-primary)' 
+                        style={{
+                          backgroundColor: 'var(--bg-primary)',
+                          border: '1px solid var(--border)',
+                          color: 'var(--text-primary)'
                         }}
                         placeholder="e.g. Find all PDF files modified in the last 7 days..."
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         autoFocus
+                        aria-label="Describe the shell task in natural language"
                     />
                     <button 
                         type="submit"
@@ -108,20 +111,21 @@ const CommandGenerator: React.FC<CommandGeneratorProps> = ({ onClose }) => {
                             <span>Translating to shell script...</span>
                         </div>
                     ) : output ? (
-                        <div className="markdown-content">{output}</div>
+                        <MarkdownText content={output} />
                     ) : (
                         <span style={{ color: 'var(--text-muted)' }}>Waiting for input...</span>
                     )}
                 </div>
                 
                 {output && !loading && (
-                    <button 
+                    <button
                         onClick={handleCopy}
                         className="absolute top-2 right-2 p-2 rounded transition-colors"
                         style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-                        title="Copy Command"
+                        title={copyState === 'failed' ? 'Copy failed — select the text manually' : 'Copy Command'}
+                        aria-label="Copy generated command"
                     >
-                        {copied ? <Check size={14} style={{ color: 'var(--success)' }}/> : <Copy size={14}/>}
+                        {copyState === 'copied' ? <Check size={14} style={{ color: 'var(--success)' }}/> : copyState === 'failed' ? <AlertCircle size={14} style={{ color: 'var(--error)' }} /> : <Copy size={14}/>}
                     </button>
                 )}
             </div>

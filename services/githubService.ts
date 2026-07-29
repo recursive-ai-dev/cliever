@@ -201,8 +201,8 @@ export const GitHubService = {
     if (cached) return cached;
 
     // Preserve stale entry for ETag conditional requests and offline fallback.
-    // The fresh cache.get() above already deleted expired entries, so we
-    // look up the etag/data from the raw internal store via getEtag/getStale.
+    // get() intentionally keeps expired entries in place (returns null on TTL
+    // expiry without deleting), so getEtag()/getStale() still see them here.
     const staleEtag = repoMetadataCache.getEtag(cacheKey);
     const staleData = repoMetadataCache.getStale(cacheKey);
 
@@ -255,6 +255,71 @@ export const GitHubService = {
         message: getErrorMessage(error)
       });
       return staleData || null; // Fallback to stale cache if available
+    }
+  },
+
+  /**
+   * Tri-state repository reachability probe used by the sync engine.
+   * - 'live': repository exists and metadata is available (fresh or stale cache)
+   * - 'missing': GitHub definitively reported the repository as gone (404)
+   * - 'unknown': network/rate-limit/circuit prevented a determination
+   */
+  checkRepoStatus: async (repoUrl: string): Promise<{ outcome: 'live' | 'missing' | 'unknown'; pushedAt?: string }> => {
+    const parsed = GitHubService.parseGitHubUrl(repoUrl);
+    if (!parsed) return { outcome: 'unknown' };
+
+    const cacheKey = `${parsed.owner}/${parsed.repo}`;
+
+    // Fresh cache hit — no network needed.
+    const cached = repoMetadataCache.get(cacheKey);
+    if (cached) return { outcome: 'live', pushedAt: cached.pushed_at };
+
+    const staleEtag = repoMetadataCache.getEtag(cacheKey);
+    const staleData = repoMetadataCache.getStale(cacheKey);
+
+    try {
+      const metadata = await circuitBreaker.execute(async () => {
+        const headers: Record<string, string> = {
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': GITHUB_API_VERSION
+        };
+        if (staleEtag) {
+          headers['If-None-Match'] = staleEtag;
+        }
+
+        const response = await fetch(
+          `${GITHUB_API_BASE}/repos/${parsed.owner}/${parsed.repo}`,
+          { headers }
+        );
+
+        if (response.status === 304 && staleData) {
+          repoMetadataCache.set(cacheKey, staleData, staleEtag);
+          return staleData;
+        }
+
+        if (response.status === 404) {
+          return null; // Definitive: repository is gone or private.
+        }
+
+        if (!response.ok) {
+          throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json() as GitHubRepoMetadata;
+        repoMetadataCache.set(cacheKey, data, response.headers.get('etag') || undefined);
+        return data;
+      });
+
+      if (metadata) return { outcome: 'live', pushedAt: metadata.pushed_at };
+      return { outcome: 'missing' };
+    } catch (error: unknown) {
+      logger.warn('Repository status probe inconclusive', {
+        cacheKey,
+        message: getErrorMessage(error)
+      });
+      // Previously-confirmed metadata beats "unknown": the repo existed recently.
+      if (staleData) return { outcome: 'live', pushedAt: staleData.pushed_at };
+      return { outcome: 'unknown' };
     }
   },
 

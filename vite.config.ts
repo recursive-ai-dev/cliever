@@ -1,6 +1,7 @@
 import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(() => {
   return {
@@ -9,7 +10,7 @@ export default defineConfig(() => {
         host: '0.0.0.0',
         allowedHosts: ['cliever.onrender.com'],
       },
-      plugins: [react()],
+      plugins: [react(), tailwindcss()],
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
@@ -18,11 +19,16 @@ export default defineConfig(() => {
       build: {
         rollupOptions: {
           output: {
-            manualChunks: {
-              // Vendor chunks for better caching
-              'react-vendor': ['react', 'react-dom'],
-              'charts': ['recharts'],
-              'icons': ['lucide-react']
+            manualChunks(id: string) {
+              // Vendor chunks for better caching. Function form handles
+              // subpath imports (react/jsx-runtime, react-dom/client) and
+              // transitive chart dependencies that package-name matching misses.
+              if (id.includes('node_modules')) {
+                if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'react-vendor';
+                if (/[\\/]node_modules[\\/](recharts|d3-[^\\/]*|victory-vendor|react-is|decimal\.js-light|tiny-invariant)[\\/]/.test(id)) return 'charts';
+                if (id.includes('lucide-react')) return 'icons';
+              }
+              return undefined;
             }
           }
         },
