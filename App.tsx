@@ -7,6 +7,7 @@ import AgentCard from './components/AgentCard';
 import AgentDetailLayer from './components/AgentDetailLayer';
 import ComparisonLayer from './components/ComparisonLayer';
 import TakeBundleLayer from './components/TakeBundleLayer';
+// CollaborationLayer is available for future squad UI but not rendered in the current layout.
 import ThemeSelector from './components/ThemeSelector';
 import { applyTheme, getStoredTheme } from './utils/theme';
 import {
@@ -306,6 +307,11 @@ const App: React.FC = () => {
         ...a,
         status: RegistrySyncService.checkStatus(a)
       })));
+      // Keep selectedAgent status in sync with the background refresh
+      setSelectedAgent(prev => {
+        if (!prev) return prev;
+        return { ...prev, status: RegistrySyncService.checkStatus(prev) };
+      });
     }, 30000); // Check status every 30s
     return () => clearInterval(interval);
   }, []);
@@ -341,6 +347,16 @@ const App: React.FC = () => {
         lastSynced: new Date().toISOString()
       })));
 
+      // Keep selectedAgent in sync to prevent stale status in the detail modal
+      setSelectedAgent(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          status: syncResults.get(prev.id) || 'LIVE',
+          lastSynced: new Date().toISOString()
+        };
+      });
+
       setLastGlobalSync(new Date().toLocaleTimeString());
       setChatHistory(prev => [...prev, { role: 'model', text: `> REGISTRY SYNCHRONIZED. ${syncResults.size}/${agents.length} NODES VERIFIED. INTEGRITY 100%.` }]);
     } catch (error) {
@@ -350,9 +366,10 @@ const App: React.FC = () => {
       // Fallback to cached/live status
       setAgents(prev => prev.map(a => ({
         ...a,
-        status: 'LIVE',
+        status: 'LIVE' as AgentStatus,
         lastSynced: new Date().toISOString()
       })));
+      setSelectedAgent(prev => prev ? { ...prev, status: 'LIVE' as AgentStatus, lastSynced: new Date().toISOString() } : prev);
     } finally {
       setIsGlobalSyncing(false);
     }
@@ -537,19 +554,6 @@ const App: React.FC = () => {
           >
             <RefreshCw size={14} className={isGlobalVerifying ? 'animate-spin' : ''} />
             <span className="hidden sm:inline">{isGlobalVerifying ? 'VERIFYING...' : 'VERIFY_VISIBLE'}</span>
-          </button>
-          <button
-            onClick={() => setChatOpen(!chatOpen)}
-            className="p-2 rounded-full transition-all"
-            style={{
-              backgroundColor: chatOpen ? 'var(--accent)' : 'var(--bg-secondary)',
-              color: chatOpen ? 'var(--bg-primary)' : 'var(--text-secondary)',
-              borderWidth: chatOpen ? 0 : 1,
-              borderColor: 'var(--border)',
-              boxShadow: chatOpen ? '0 0 20px var(--accent-glow)' : 'none'
-            }}
-          >
-            <MessageSquare size={18} />
           </button>
           <button
             onClick={() => setChatOpen(!chatOpen)}

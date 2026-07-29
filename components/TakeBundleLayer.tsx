@@ -68,7 +68,7 @@ const TakeBundleLayer: React.FC<TakeBundleLayerProps> = ({ agents, bundledAgentI
     const body = commands
       .map(c => {
         const comment = `\n# ${c.name}\n`;
-        const cmd = os === 'windows' ? `${c.command}` : `${c.command}`;
+        const cmd = c.command;
         const note = c.notes ? `\n# Note: ${c.notes}\n` : '';
         return `${comment}${cmd}${note}`;
       })

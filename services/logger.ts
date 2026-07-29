@@ -56,7 +56,8 @@ const DEFAULT_CONFIG: LoggerConfig = {
  */
 const isDevelopment = (): boolean => {
   try {
-    return import.meta.env?.DEV === true || import.meta.env?.MODE === 'development';
+    const env = (import.meta as unknown as { env?: { DEV?: boolean; MODE?: string } }).env;
+    return env?.DEV === true || env?.MODE === 'development';
   } catch {
     return false;
   }
@@ -385,7 +386,7 @@ class Logger {
     };
     
     this.logs.forEach(log => {
-      stats[log.level]++;
+      stats[log.level] = (stats[log.level] ?? 0) + 1;
     });
     
     return stats;

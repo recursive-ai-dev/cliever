@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { logger } from '../services/logger';
 import { AnalyticsService } from '../services/analyticsService';
 
@@ -32,7 +32,7 @@ class ErrorBoundary extends Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log error to analytics service (with error handling to prevent cascading failures)
     try {
       AnalyticsService.trackError(error, {
@@ -64,7 +64,7 @@ class ErrorBoundary extends Component<Props, State> {
     });
   };
 
-  render(): ReactNode {
+  override render(): ReactNode {
     if (this.state.hasError) {
       // Custom fallback UI
       if (this.props.fallback) {
