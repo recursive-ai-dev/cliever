@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Copy, Check, Monitor, Apple, Terminal } from 'lucide-react';
+import { X, Copy, Check, Monitor, Apple, Terminal, AlertCircle } from 'lucide-react';
 import { Agent } from '../types';
+import { copyText } from '../utils/clipboard';
 
 export type BundleOS = 'windows' | 'macos' | 'linux';
 
@@ -28,7 +29,7 @@ const pickCommandForOS = (agent: Agent, os: BundleOS): string => {
 
 const TakeBundleLayer: React.FC<TakeBundleLayerProps> = ({ agents, bundledAgentIds, onClose }) => {
   const [os, setOS] = useState<BundleOS>(() => detectOS());
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
@@ -78,13 +79,9 @@ const TakeBundleLayer: React.FC<TakeBundleLayerProps> = ({ agents, bundledAgentI
   }, [commands, os]);
 
   const handleCopyAll = async () => {
-    try {
-      await navigator.clipboard.writeText(outputText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
+    const ok = await copyText(outputText);
+    setCopyState(ok ? 'copied' : 'failed');
+    setTimeout(() => setCopyState('idle'), 2000);
   };
 
   return (
@@ -193,9 +190,10 @@ const TakeBundleLayer: React.FC<TakeBundleLayerProps> = ({ agents, bundledAgentI
                 onClick={handleCopyAll}
                 className="absolute top-2 right-2 p-2 rounded transition-colors"
                 style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-                title="Copy bundle output"
+                title={copyState === 'failed' ? 'Copy failed — select the text manually' : 'Copy bundle output'}
+                aria-label="Copy bundle output"
               >
-                {copied ? <Check size={14} style={{ color: 'var(--success)' }} /> : <Copy size={14} />}
+                {copyState === 'copied' ? <Check size={14} style={{ color: 'var(--success)' }} /> : copyState === 'failed' ? <AlertCircle size={14} style={{ color: 'var(--error)' }} /> : <Copy size={14} />}
               </button>
             )}
           </div>

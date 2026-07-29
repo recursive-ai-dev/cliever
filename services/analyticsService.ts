@@ -18,6 +18,8 @@ export enum AnalyticsEventType {
   COLLABORATION_STARTED = 'collaboration_started',
   SYNC_TRIGGERED = 'sync_triggered',
   CHAT_MESSAGE_SENT = 'chat_message_sent',
+  REVIEW_ADDED = 'review_added',
+  REVIEW_DELETED = 'review_deleted',
   ERROR_OCCURRED = 'error_occurred',
   PERFORMANCE_METRIC = 'performance_metric'
 }

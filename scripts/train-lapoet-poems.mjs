@@ -38,7 +38,16 @@ const CHUNK_LINES = Number.parseInt(process.env.LAPOET_CHUNK_LINES ?? '1200', 10
 const SAVE_EVERY_MS = Number.parseInt(process.env.LAPOET_SAVE_EVERY_MS ?? '60000', 10); // 1 minute
 
 const POEMS_DIR = path.join(workspaceRoot, 'model', 'poems');
+// Fallback corpus when `model/poems/` is absent: the lyrics corpus that ships
+// with the repository keeps the training run fully offline and functional.
+const POEMS_FALLBACK_DIR = path.join(workspaceRoot, 'model', 'lapoet-main', 'lyrics');
 const PRETRAIN_DIR = path.join(workspaceRoot, 'model', 'lapoet-main', 'pretraining');
+
+const resolvePoemsDir = () => {
+  if (fs.existsSync(POEMS_DIR)) return { dir: POEMS_DIR, isFallback: false };
+  if (fs.existsSync(POEMS_FALLBACK_DIR)) return { dir: POEMS_FALLBACK_DIR, isFallback: true };
+  return null;
+};
 
 const OUT_PUBLIC = path.join(workspaceRoot, 'public', 'lapoet', 'agtune-poems-checkpoint.json');
 const OUT_MODEL = path.join(workspaceRoot, 'model', 'lapoet-main', 'agtune-poems-checkpoint.json');
@@ -472,11 +481,16 @@ const loadPretraining = () => {
 };
 
 const loadPoems = () => {
-  if (!fs.existsSync(POEMS_DIR)) {
-    throw new Error(`Poems directory not found: ${POEMS_DIR}`);
+  const resolved = resolvePoemsDir();
+  if (!resolved) {
+    throw new Error(`No poem/lyrics corpus found. Looked in:\n  - ${POEMS_DIR}\n  - ${POEMS_FALLBACK_DIR}`);
   }
 
-  const allFiles = walkFiles(POEMS_DIR);
+  if (resolved.isFallback) {
+    console.log(`[corpus] ${POEMS_DIR} not found; falling back to ${resolved.dir}`);
+  }
+
+  const allFiles = walkFiles(resolved.dir);
   const files = sampleArray(allFiles, Math.min(MAX_FILES, allFiles.length));
 
   const lines = [];
@@ -509,7 +523,8 @@ async function main() {
   console.log('LAPOET POEMS TRAINING (TIME-BOUNDED)');
   console.log('='.repeat(70));
   console.log(`Workspace: ${workspaceRoot}`);
-  console.log(`Poems dir: ${POEMS_DIR}`);
+  const resolvedCorpus = resolvePoemsDir();
+  console.log(`Poems dir: ${resolvedCorpus ? resolvedCorpus.dir : POEMS_DIR}${resolvedCorpus?.isFallback ? ' (fallback)' : ''}`);
   console.log(`Minutes: ${TOTAL_MINUTES}`);
   console.log(`Output: ${OUT_PUBLIC}`);
   console.log('');

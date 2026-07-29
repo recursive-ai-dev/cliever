@@ -26,9 +26,10 @@ export default defineConfig({
         },
     ],
     webServer: {
-        command: 'npm run dev',
+        // Smoke-test the production bundle, not the dev server.
+        command: 'npm run build && npm run preview -- --port 3000 --strictPort',
         url: 'http://localhost:3000',
         reuseExistingServer: !process.env['CI'],
-        timeout: 120 * 1000,
+        timeout: 180 * 1000,
     },
 });

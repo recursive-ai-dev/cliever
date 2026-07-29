@@ -397,32 +397,6 @@ export const ReviewStorage = {
       });
       return false;
     }
-  },
-
-  /**
-   * Merge reviews with stored reviews (for sync operations)
-   */
-  mergeReviews: (agentId: string, newReviews: Review[]): void => {
-    const allReviews = StorageService.get(StorageKey.REVIEWS) || {};
-    const existing = allReviews[agentId] || [];
-    
-    // User-generated reviews start with 'user-', preserve these
-    const userReviews = existing.filter(r => r.id.startsWith('user-'));
-    
-    // Validate and sanitize new reviews
-    const validNewReviews = newReviews
-      .filter(validateReview)
-      .map(sanitizeReview);
-
-    // Merge: user reviews first, then new reviews (deduped)
-    const existingIds = new Set(userReviews.map(r => r.id));
-    const merged = [
-      ...userReviews,
-      ...validNewReviews.filter(r => !existingIds.has(r.id))
-    ].slice(0, 50);
-
-    allReviews[agentId] = merged;
-    StorageService.set(StorageKey.REVIEWS, allReviews);
   }
 };
 

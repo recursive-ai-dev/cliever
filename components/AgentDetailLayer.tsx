@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Agent, ChatMessage, Review } from '../types';
-import { X, Copy, Check, Cpu, Github, Zap, Star, MessageCircle, Code, Shield, Twitter, Linkedin, Monitor, Apple, Terminal, AlertCircle, MessageSquare } from 'lucide-react';
-import { analyzeAgent, askExpert } from '../services/localModelService';
+import { X, Copy, Check, Cpu, Github, Zap, Star, MessageCircle, Code, Shield, Twitter, Linkedin, Monitor, Apple, Terminal, AlertCircle, MessageSquare, Trash2, Wrench, FileText } from 'lucide-react';
+import { analyzeAgent, askExpert, diagnoseInstallError, getInstallationGuide } from '../services/localModelService';
 import { VerificationService } from '../services/verificationService';
+import { AnalyticsService, AnalyticsEventType } from '../services/analyticsService';
 import SimpleTooltip from './SimpleTooltip';
 import { suggestCopyCommand } from '../utils/command';
+import { copyText } from '../utils/clipboard';
+import MarkdownText from '../utils/markdown';
 import { TAG_DESCRIPTIONS } from '../constants';
 import { getErrorMessage, sanitizeChatMessage, sanitizeDisplayText } from '../utils/sanitization';
 
@@ -13,6 +16,7 @@ interface AgentDetailLayerProps {
     onClose: () => void;
     onCompare: (agent: Agent) => void;
     onAddReview: (agentId: string, review: Omit<Review, 'id' | 'date'>) => void;
+    onDeleteReview: (agentId: string, reviewId: string) => void;
     onVerificationUpdate: (agentId: string, patch: Partial<Agent>) => void;
     isBundled: boolean;
     onToggleBundle: (agent: Agent) => void;
@@ -29,10 +33,10 @@ const detectOS = (): 'windows' | 'macos' | 'linux' => {
     return 'linux';
 };
 
-const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onCompare, onAddReview, onVerificationUpdate, isBundled, onToggleBundle, platform }) => {
+const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onCompare, onAddReview, onDeleteReview, onVerificationUpdate, isBundled, onToggleBundle, platform }) => {
     const [analysis, setAnalysis] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [copied, setCopied] = useState(false);
+    const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
 
     // LaPoet Chat (agent-scoped)
     const [lapoetChatOpen, setLapoetChatOpen] = useState(false);
@@ -60,6 +64,11 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
         platform || (detectedOS === 'windows' ? 'windows' : 'default')
     );
     const [showTroubleshooting, setShowTroubleshooting] = useState(false);
+
+    // Install Doctor (error diagnosis) State
+    const [installErrorInput, setInstallErrorInput] = useState('');
+    const [installDiagnosis, setInstallDiagnosis] = useState<string | null>(null);
+    const [guideCopied, setGuideCopied] = useState(false);
 
     useEffect(() => {
         const prevOverflow = document.body.style.overflow;
@@ -99,13 +108,36 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
 
     const handleCopy = () => {
         const toCopy = suggestCopyCommand(currentCommand);
-        navigator.clipboard.writeText(toCopy).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        }).catch(() => {
-            setCopied(false);
+        copyText(toCopy).then((ok) => {
+            setCopyState(ok ? 'copied' : 'failed');
+            setTimeout(() => setCopyState('idle'), 2000);
+            if (ok) {
+                AnalyticsService.trackEvent(AnalyticsEventType.AGENT_INSTALL_COPY, {
+                    agentId: agent.id,
+                    agentName: agent.name,
+                    platform: selectedPlatform
+                });
+            } else {
+                AnalyticsService.trackError('Clipboard copy failed', { context: 'agent_detail_copy', agentId: agent.id }, 'low');
+            }
         });
     };
+
+    const handleCopyInstallGuide = () => {
+        const guide = getInstallationGuide(agent);
+        copyText(guide).then((ok) => {
+            setGuideCopied(ok);
+            setTimeout(() => setGuideCopied(false), 2000);
+        });
+    };
+
+    const handleDiagnoseInstall = () => {
+        if (!installErrorInput.trim()) return;
+        const result = diagnoseInstallError(installErrorInput, agent.installCommand);
+        setInstallDiagnosis(result);
+    };
+
+    const copied = copyState === 'copied';
 
     const handleVerify = async () => {
         if (verifying) return;
@@ -142,13 +174,9 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
             },
             reviews
         };
-        try {
-            await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-            setExportCopied(true);
-            setTimeout(() => setExportCopied(false), 2000);
-        } catch {
-            setExportCopied(false);
-        }
+        const ok = await copyText(JSON.stringify(payload, null, 2));
+        setExportCopied(ok);
+        setTimeout(() => setExportCopied(false), 2000);
     };
 
     const verificationColor = (status: Agent['verificationStatus']): string => {
@@ -424,9 +452,24 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
 
                         {/* Install Command with Platform Selection */}
                         <div>
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                                 <h3 className="text-xs font-mono uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Installation</h3>
 
+                                <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleCopyInstallGuide}
+                                    className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase transition-all"
+                                    style={{
+                                        backgroundColor: guideCopied ? 'var(--accent-glow)' : 'var(--bg-tertiary)',
+                                        border: guideCopied ? '1px solid var(--success)' : '1px solid var(--border)',
+                                        color: guideCopied ? 'var(--success)' : 'var(--text-muted)'
+                                    }}
+                                    title="Copy full platform install guide to clipboard"
+                                >
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <FileText size={12} /> {guideCopied ? 'COPIED' : 'GUIDE'}
+                                    </span>
+                                </button>
                                 <button
                                     onClick={() => onToggleBundle(agent)}
                                     className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase transition-all"
@@ -439,6 +482,7 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                                 >
                                     {isBundled ? 'IN_BUNDLE' : '+ BUNDLE'}
                                 </button>
+                                </div>
 
                                 {/* Platform Selector */}
                                 {agent.platformCommands && (
@@ -516,10 +560,16 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                             </div>
 
                             <div className="rounded-lg p-4 font-mono text-sm group relative"
-                                style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
+                                style={{ backgroundColor: 'var(--bg-primary)', border: copyState === 'failed' ? '1px solid var(--error)' : '1px solid var(--border)' }}>
                                 <div className="absolute top-2 right-2 flex gap-2">
-                                    <button onClick={handleCopy} className="p-1 rounded transition-colors" style={{ color: 'var(--text-muted)' }}>
-                                        {copied ? <Check size={16} style={{ color: 'var(--success)' }} /> : <Copy size={16} />}
+                                    <button
+                                        onClick={handleCopy}
+                                        className="p-1 rounded transition-colors"
+                                        style={{ color: 'var(--text-muted)' }}
+                                        title={copyState === 'failed' ? 'Copy failed — select the command manually' : 'Copy install command'}
+                                        aria-label="Copy install command"
+                                    >
+                                        {copied ? <Check size={16} style={{ color: 'var(--success)' }} /> : copyState === 'failed' ? <AlertCircle size={16} style={{ color: 'var(--error)' }} /> : <Copy size={16} />}
                                     </button>
                                 </div>
                                 <span style={{ color: 'var(--accent)' }} className="select-none">{selectedPlatform === 'windows' ? '> ' : '$ '}</span>
@@ -556,6 +606,39 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                                     )}
                                 </div>
                             )}
+
+                            {/* Install Doctor: diagnose real installation errors offline */}
+                            <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}>
+                                <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+                                    <Wrench size={12} /> Install Doctor
+                                </div>
+                                <p className="text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
+                                    Paste an installation error message to get an offline diagnosis for this tool's package manager.
+                                </p>
+                                <div className="flex gap-2">
+                                    <input
+                                        className="flex-1 rounded px-2 py-1.5 text-xs font-mono outline-none"
+                                        style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                                        placeholder="e.g. npm ERR! EACCES: permission denied..."
+                                        value={installErrorInput}
+                                        onChange={(e) => setInstallErrorInput(e.target.value)}
+                                        aria-label="Installation error message"
+                                    />
+                                    <button
+                                        onClick={handleDiagnoseInstall}
+                                        disabled={!installErrorInput.trim()}
+                                        className="px-3 py-1.5 rounded text-[10px] font-mono font-bold uppercase transition-all disabled:opacity-30"
+                                        style={{ backgroundColor: 'var(--accent-glow)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
+                                    >
+                                        Diagnose
+                                    </button>
+                                </div>
+                                {installDiagnosis && (
+                                    <div className="mt-3 p-2 rounded" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
+                                        <MarkdownText content={installDiagnosis} className="text-xs" />
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* AI Analysis Section */}
@@ -583,9 +666,9 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                             )}
 
                             {analysis && (
-                                <div className="p-4 rounded-lg text-sm leading-relaxed markdown-content whitespace-pre-line"
+                                <div className="p-4 rounded-lg text-sm leading-relaxed"
                                     style={{ backgroundColor: 'var(--accent-glow)', border: '1px solid var(--accent)', color: 'var(--text-secondary)' }}>
-                                    {analysis}
+                                    <MarkdownText content={analysis} />
                                 </div>
                             )}
                         </div>
@@ -634,6 +717,7 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                                                 className="flex-1 rounded-lg px-3 py-2 text-xs focus:outline-none font-mono"
                                                 style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                                                 placeholder="Ask LaPoet about this tool..."
+                                                aria-label="Ask the local engine about this tool"
                                                 value={lapoetChatInput}
                                                 onChange={(e) => setLapoetChatInput(sanitizeChatMessage(e.target.value))}
                                                 disabled={lapoetChatLoading}
@@ -693,6 +777,7 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                                             className="w-full rounded p-2 text-sm outline-none"
                                             style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                                             placeholder="Operative Name"
+                                            aria-label="Your display name"
                                             value={reviewUser}
                                             onChange={e => setReviewUser(e.target.value)}
                                             required
@@ -714,6 +799,7 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                                             className="w-full rounded p-2 text-sm outline-none h-20"
                                             style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                                             placeholder="Transmission content..."
+                                            aria-label="Review content"
                                             value={reviewComment}
                                             onChange={e => setReviewComment(e.target.value)}
                                             required
@@ -732,12 +818,23 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                                     No transmissions received yet.
                                 </div>
                             ) : (
-                                reviews.slice().reverse().map(review => (
-                                    <div key={review.id} className="relative pl-4 pb-2" style={{ borderLeft: '2px solid var(--border)' }}>
+                                reviews.map(review => (
+                                    <div key={review.id} className="relative pl-4 pb-2 group/review" style={{ borderLeft: '2px solid var(--border)' }}>
                                         <div className="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--border)', border: '1px solid var(--bg-primary)' }}></div>
                                         <div className="flex justify-between items-start mb-1">
                                             <span className="font-mono text-xs" style={{ color: 'var(--accent)' }}>{review.user}</span>
-                                            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{review.date}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{review.date}</span>
+                                                <button
+                                                    onClick={() => onDeleteReview(agent.id, review.id)}
+                                                    className="opacity-0 group-hover/review:opacity-100 focus:opacity-100 transition-opacity p-0.5 rounded"
+                                                    style={{ color: 'var(--text-muted)' }}
+                                                    title="Delete this review"
+                                                    aria-label={`Delete review by ${review.user}`}
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="flex mb-2" style={{ color: 'var(--warning)' }}>
                                             {[...Array(5)].map((_, i) => (

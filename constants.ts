@@ -53,7 +53,42 @@ export const TAG_DESCRIPTIONS: Record<string, string> = {
   'music': 'Audio playback and library management tools.',
   'video': 'Video downloading, streaming, and playback utilities.',
   'spotify': 'Integrations with the Spotify streaming service.',
-  'streaming': 'Tools for handling live or on-demand media streams.'
+  'streaming': 'Tools for handling live or on-demand media streams.',
+  'c': 'Written in or for the C programming language.',
+  'c++': 'Written in or for the C++ programming language.',
+  'organization': 'Helps organize files, notes, or tasks.',
+  'player': 'Plays media directly from the terminal.',
+  'documentation': 'Generates or renders project documentation.',
+  'theming': 'Customizes visual appearance and color schemes.',
+  'database': 'Connects to or manages database systems.',
+  'data': 'Processes, transforms, or analyzes data sets.',
+  'markdown': 'Reads, renders, or edits Markdown content.',
+  'devops': 'Supports deployment and operations workflows.',
+  'kubernetes': 'Manages Kubernetes clusters and workloads.',
+  'docker': 'Manages containers and Docker workflows.',
+  'notes': 'Note-taking and knowledge management.',
+  'time-tracking': 'Tracks time spent on tasks and projects.',
+  'development': 'General-purpose software development tooling.',
+  'network': 'Inspects or manages network connections.',
+  'ssh': 'Works over or manages SSH connections.',
+  'monitoring': 'Watches systems, logs, or metrics.',
+  'editor': 'A text editor for code or prose.',
+  'download': 'Downloads content from remote sources.',
+  'media-player': 'Plays audio or video media.',
+  'file-manager': 'Browses and manipulates files and directories.',
+  'vim': 'Vim-style modal editing or keybindings.',
+  'async': 'Asynchronous or non-blocking execution model.',
+  'search': 'Finds content across files, code, or the web.',
+  'fuzzy-finder': 'Fuzzy matching for fast interactive search.',
+  'lisp': 'Built with or for the Lisp language family.',
+  'http': 'Speaks HTTP for API calls and web requests.',
+  'curl': 'Transfers data with URLs, curl-compatible.',
+  'mysql': 'Works with MySQL or MariaDB databases.',
+  'postgresql': 'Works with PostgreSQL databases.',
+  'redis': 'Works with Redis key-value stores.',
+  'sql': 'Queries or manages SQL databases.',
+  'shell': 'Runs as or extends the system shell.',
+  'disk-usage': 'Analyzes disk space consumption.'
 };
 
 export const AGENTS: Agent[] = [
@@ -747,29 +782,6 @@ export const AGENTS: Agent[] = [
     useCases: ['Rapid static site hosting.', 'Secure cloud provisioning.', 'Automatic site teardown.'],
     reviews: [],
     version: 'v1.0.2'
-  },
-  {
-    id: 'lazygit',
-    name: 'Lazygit',
-    description: 'Intuitive terminal user interface for Git commands.',
-    longDescription: 'Simplifies complex Git operations like interactive staging and squashing into an efficient TUI.',
-    category: AgentCategory.TERMINAL_UTILITY,
-    stars: 48000,
-    language: 'Go',
-    installCommand: 'brew install lazygit',
-    platformCommands: {
-      default: 'brew install lazygit',
-      windows: 'scoop install lazygit',
-      macos: 'brew install lazygit',
-      linux: 'sudo add-apt-repository ppa:lazygit-team/release && sudo apt install lazygit',
-      notes: 'Run "lazygit" in any git repo. Keyboard-driven TUI.'
-    },
-    repoUrl: 'https://github.com/jesseduffield/lazygit',
-    features: ['Interactive staging', 'Commit squashing', 'Visual diffs'],
-    tags: ['git', 'tui', 'go'],
-    useCases: ['Speeding up Git workflows.', 'Complex conflict resolution.', 'Visual Git navigation.'],
-    reviews: [],
-    version: 'v0.40'
   },
   // --- 6.5 ENTERTAINMENT & LEISURE ---
   {
@@ -1469,52 +1481,6 @@ export const AGENTS: Agent[] = [
   // --- 13.0 SHELL UTILITIES ---
   // ============================================================================
   {
-    id: 'bat',
-    name: 'bat',
-    description: 'A cat clone with syntax highlighting and Git integration.',
-    longDescription: 'bat is a cat replacement with syntax highlighting, line numbers, and Git integration. It makes reading code in the terminal a pleasure.',
-    category: AgentCategory.SHELL_UTILITY,
-    stars: 51500,
-    language: 'Rust',
-    installCommand: 'brew install bat',
-    platformCommands: {
-      default: 'brew install bat',
-      linux: 'sudo apt install bat',
-      macos: 'brew install bat',
-      windows: 'scoop install bat',
-      notes: 'On Ubuntu/Debian the command is `batcat` due to name conflict.'
-    },
-    repoUrl: 'https://github.com/sharkdp/bat',
-    features: ['Syntax highlighting', 'Git integration', 'Line numbers', 'Paging'],
-    tags: ['rust', 'terminal', 'productivity', 'open-source'],
-    useCases: ['Reading code files.', 'Viewing diffs with highlighting.', 'Better cat alternative.'],
-    reviews: [],
-    version: 'v0.24.0'
-  },
-  {
-    id: 'eza',
-    name: 'eza',
-    description: 'Modern replacement for ls with icons and Git awareness.',
-    longDescription: 'eza is a modern, maintained replacement for ls written in Rust. It offers icons, Git status, and extended file information with beautiful formatting.',
-    category: AgentCategory.SHELL_UTILITY,
-    stars: 14000,
-    language: 'Rust',
-    installCommand: 'brew install eza',
-    platformCommands: {
-      default: 'brew install eza',
-      linux: 'sudo apt install eza',
-      macos: 'brew install eza',
-      windows: 'scoop install eza',
-      notes: 'Use a Nerd Font for icons. Alias ls to eza in your shell rc.'
-    },
-    repoUrl: 'https://github.com/eza-community/eza',
-    features: ['Git status', 'Icons', 'Tree view', 'Extended colors'],
-    tags: ['rust', 'terminal', 'productivity', 'open-source'],
-    useCases: ['Better directory listings.', 'Seeing Git status at a glance.', 'Modern ls replacement.'],
-    reviews: [],
-    version: 'v0.20.14'
-  },
-  {
     id: 'dust',
     name: 'dust',
     description: 'A more intuitive version of du written in Rust.',
@@ -1705,29 +1671,6 @@ export const AGENTS: Agent[] = [
     useCases: ['Interactive MySQL queries.', 'Database administration.', 'Faster SQL development.'],
     reviews: [],
     version: '1.27.2'
-  },
-  {
-    id: 'pgcli',
-    name: 'pgcli',
-    description: 'A Postgres client with auto-completion and syntax highlighting.',
-    longDescription: 'pgcli is a command-line interface for PostgreSQL with auto-completion, syntax highlighting, and smart completions for tables and columns.',
-    category: AgentCategory.DATABASE,
-    stars: 12400,
-    language: 'Python',
-    installCommand: 'pip install pgcli',
-    platformCommands: {
-      default: 'pip install pgcli',
-      linux: 'pip install pgcli',
-      macos: 'brew install pgcli',
-      windows: 'pip install pgcli',
-      notes: 'Connect with `pgcli -u user -h host database`. Supports .pgclirc config.'
-    },
-    repoUrl: 'https://github.com/dbcli/pgcli',
-    features: ['Auto-completion', 'Syntax highlighting', 'Named queries', 'Table formatting'],
-    tags: ['python', 'database', 'productivity', 'open-source'],
-    useCases: ['Interactive Postgres sessions.', 'SQL development.', 'Database exploration.'],
-    reviews: [],
-    version: '4.1.0'
   },
   {
     id: 'usql',
@@ -2311,191 +2254,10 @@ export const AGENTS: Agent[] = [
     reviews: [],
     version: '2021.12.17'
   },
-  {
-    id: 'yt-dlp',
-    name: 'yt-dlp',
-    description: 'Feature-rich fork of youtube-dl with additional fixes.',
-    longDescription: 'A youtube-dl fork with additional features and fixes, including better format selection, sponsorblock integration, and active maintenance.',
-    category: AgentCategory.VIDEO,
-    stars: 84000,
-    language: 'Python',
-    installCommand: 'pip install yt-dlp',
-    platformCommands: {
-      default: 'pip install yt-dlp',
-      windows: 'winget install yt-dlp.yt-dlp',
-      macos: 'brew install yt-dlp',
-      linux: 'pip install yt-dlp',
-      notes: 'Actively maintained youtube-dl alternative. Recommended over original.'
-    },
-    repoUrl: 'https://github.com/yt-dlp/yt-dlp',
-    features: ['SponsorBlock', 'Better extraction', 'Active maintenance', 'More sites'],
-    tags: ['python', 'video', 'download', 'open-source'],
-    useCases: ['Download YouTube videos.', 'Archive streams.', 'Extract playlists.'],
-    reviews: [],
-    version: '2024.01.07'
-  },
-  {
-    id: 'mpv',
-    name: 'mpv',
-    description: 'Free, open source, and cross-platform media player.',
-    longDescription: 'A minimal media player with superior video quality. Keyboard-driven, scriptable, and highly configurable for power users.',
-    category: AgentCategory.VIDEO,
-    stars: 28000,
-    language: 'C',
-    installCommand: 'brew install mpv',
-    platformCommands: {
-      default: 'brew install mpv',
-      windows: 'scoop install mpv',
-      macos: 'brew install mpv',
-      linux: 'sudo apt install mpv',
-      notes: 'Launch with `mpv <file>`. Highly scriptable via Lua.'
-    },
-    repoUrl: 'https://mpv.io/',
-    features: ['High quality playback', 'Lua scripting', 'Hardware acceleration', 'Minimal UI'],
-    tags: ['video', 'media-player', 'open-source'],
-    useCases: ['Watch videos from terminal.', 'Stream URLs.', 'Custom playback workflows.'],
-    reviews: [],
-    version: 'v0.38.0'
-  },
 
   // --- FILE MANAGERS ---
-  {
-    id: 'ranger',
-    name: 'ranger',
-    description: 'Vi-inspired file manager for the console.',
-    longDescription: 'A console file manager with VI key bindings providing a minimalistic and nice curses interface with a view on the directory hierarchy.',
-    category: AgentCategory.FILE_MANAGER,
-    stars: 15500,
-    language: 'Python',
-    installCommand: 'pip install ranger-fm',
-    platformCommands: {
-      default: 'pip install ranger-fm',
-      macos: 'brew install ranger',
-      linux: 'sudo apt install ranger',
-      notes: 'Vi-style navigation. Supports file previews with external tools.'
-    },
-    repoUrl: 'https://github.com/ranger/ranger',
-    features: ['Vi keybindings', 'File previews', 'Tabs', 'Bookmarks'],
-    tags: ['python', 'file-manager', 'tui', 'vim'],
-    useCases: ['Navigate directories efficiently.', 'File management with Vi keys.', 'Quick file operations.'],
-    reviews: [],
-    version: 'v1.9.3'
-  },
-  {
-    id: 'nnn',
-    name: 'nnn',
-    description: 'The unorthodox terminal file manager.',
-    longDescription: 'A full-featured terminal file manager that is extremely fast and resource-sensitive with native desktop integration.',
-    category: AgentCategory.FILE_MANAGER,
-    stars: 19000,
-    language: 'C',
-    installCommand: 'brew install nnn',
-    platformCommands: {
-      default: 'brew install nnn',
-      linux: 'sudo apt install nnn',
-      macos: 'brew install nnn',
-      notes: 'Minimal resource usage. Extensive plugin ecosystem.'
-    },
-    repoUrl: 'https://github.com/jarun/nnn',
-    features: ['Fast performance', 'Desktop integration', 'Plugins', 'Disk usage analyzer'],
-    tags: ['c', 'file-manager', 'tui', 'productivity'],
-    useCases: ['Browse files quickly.', 'Disk usage analysis.', 'File operations.'],
-    reviews: [],
-    version: 'v4.9'
-  },
-  {
-    id: 'yazi',
-    name: 'yazi',
-    description: 'Blazing fast terminal file manager in Rust.',
-    longDescription: 'A terminal file manager based on async I/O, featuring full asynchronous support for file preview and I/O operations.',
-    category: AgentCategory.FILE_MANAGER,
-    stars: 15000,
-    language: 'Rust',
-    installCommand: 'cargo install --locked yazi-fm',
-    platformCommands: {
-      default: 'cargo install --locked yazi-fm',
-      macos: 'brew install yazi',
-      linux: 'cargo install --locked yazi-fm',
-      notes: 'Async file operations. Image previews in terminal.'
-    },
-    repoUrl: 'https://github.com/sxyazi/yazi',
-    features: ['Async I/O', 'Image preview', 'Fast performance', 'Vim-like'],
-    tags: ['rust', 'file-manager', 'tui', 'async'],
-    useCases: ['Fast file browsing.', 'Image preview in terminal.', 'Async file operations.'],
-    reviews: [],
-    version: 'v0.3.3'
-  },
 
   // --- SEARCH TOOLS ---
-  {
-    id: 'ripgrep',
-    name: 'ripgrep',
-    description: 'Recursively search directories for regex patterns.',
-    longDescription: 'ripgrep is a line-oriented search tool that recursively searches the current directory for a regex pattern. It is blazingly fast and respects gitignore rules.',
-    category: AgentCategory.SEARCH,
-    stars: 48000,
-    language: 'Rust',
-    installCommand: 'brew install ripgrep',
-    platformCommands: {
-      default: 'brew install ripgrep',
-      windows: 'scoop install ripgrep',
-      macos: 'brew install ripgrep',
-      linux: 'sudo apt install ripgrep',
-      notes: 'Command is `rg`. Much faster than grep/ag.'
-    },
-    repoUrl: 'https://github.com/BurntSushi/ripgrep',
-    features: ['Fast search', 'Gitignore support', 'Regex patterns', 'Multi-thread'],
-    tags: ['rust', 'search', 'productivity', 'open-source'],
-    useCases: ['Code search.', 'Log analysis.', 'Pattern matching.'],
-    reviews: [],
-    version: 'v14.1.0'
-  },
-  {
-    id: 'fzf',
-    name: 'fzf',
-    description: 'Command-line fuzzy finder.',
-    longDescription: 'A general-purpose command-line fuzzy finder that can be used with any list: files, command history, processes, hostnames, bookmarks, git commits, etc.',
-    category: AgentCategory.SEARCH,
-    stars: 64000,
-    language: 'Go',
-    installCommand: 'brew install fzf',
-    platformCommands: {
-      default: 'brew install fzf',
-      linux: 'sudo apt install fzf || git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && ~/.fzf/install',
-      macos: 'brew install fzf',
-      windows: 'scoop install fzf',
-      notes: 'Integrates with shell for Ctrl+R history search'
-    },
-    repoUrl: 'https://github.com/junegunn/fzf',
-    features: ['Fuzzy search', 'Shell integration', 'Preview window', 'Vim plugin'],
-    tags: ['go', 'search', 'productivity', 'fuzzy-finder'],
-    useCases: ['File selection.', 'Command history.', 'Git branch switching.'],
-    reviews: [],
-    version: 'v0.54.3'
-  },
-  {
-    id: 'fd',
-    name: 'fd',
-    description: 'Simple, fast alternative to find.',
-    longDescription: 'A user-friendly alternative to find with sensible defaults, colorized output, and smart case-insensitive search.',
-    category: AgentCategory.SEARCH,
-    stars: 33000,
-    language: 'Rust',
-    installCommand: 'brew install fd',
-    platformCommands: {
-      default: 'brew install fd',
-      windows: 'scoop install fd',
-      macos: 'brew install fd',
-      linux: 'sudo apt install fd-find',
-      notes: 'Command is `fd` on most systems, `fdfind` on Debian/Ubuntu'
-    },
-    repoUrl: 'https://github.com/sharkdp/fd',
-    features: ['Fast search', 'Regex patterns', 'Colorized output', 'Gitignore support'],
-    tags: ['rust', 'search', 'productivity', 'open-source'],
-    useCases: ['File finding.', 'Replacing find command.', 'Quick searches.'],
-    reviews: [],
-    version: 'v10.2.0'
-  },
 
   // ============================================================================
   // --- 24.0 CLASSIC TEXT EDITORS ---
@@ -2574,29 +2336,6 @@ export const AGENTS: Agent[] = [
   // --- 25.0 HTTP CLIENTS ---
   // ============================================================================
   {
-    id: 'httpie',
-    name: 'HTTPie',
-    description: 'A user-friendly HTTP client.',
-    longDescription: 'HTTPie is a command-line HTTP client with an intuitive UI, JSON support, syntax highlighting, persistent sessions, and more.',
-    category: AgentCategory.HTTP_CLIENT,
-    stars: 34000,
-    language: 'Python',
-    installCommand: 'brew install httpie',
-    platformCommands: {
-      default: 'brew install httpie',
-      linux: 'sudo apt install httpie',
-      macos: 'brew install httpie',
-      windows: 'pip install httpie',
-      notes: 'Use `http` command. Simpler syntax than curl.'
-    },
-    repoUrl: 'https://github.com/httpie/cli',
-    features: ['Syntax highlighting', 'JSON support', 'Sessions', 'Plugins'],
-    tags: ['python', 'http', 'api', 'open-source'],
-    useCases: ['API testing.', 'HTTP debugging.', 'REST API interaction.'],
-    reviews: [],
-    version: '3.2.4'
-  },
-  {
     id: 'http-prompt',
     name: 'HTTP Prompt',
     description: 'Interactive HTTP client featuring autocomplete and syntax highlighting.',
@@ -2618,29 +2357,6 @@ export const AGENTS: Agent[] = [
     useCases: ['Interactive API exploration.', 'Testing APIs.', 'Learning REST APIs.'],
     reviews: [],
     version: '2.1.0'
-  },
-  {
-    id: 'curlie',
-    name: 'curlie',
-    description: 'A curl frontend with the ease of use of HTTPie.',
-    longDescription: 'curlie combines the power of curl with the user-friendly interface of HTTPie. It wraps curl and provides automatic JSON formatting and colorization.',
-    category: AgentCategory.HTTP_CLIENT,
-    stars: 2900,
-    language: 'Go',
-    installCommand: 'brew install curlie',
-    platformCommands: {
-      default: 'brew install curlie',
-      linux: 'go install github.com/rs/curlie@latest',
-      macos: 'brew install curlie',
-      windows: 'scoop install curlie',
-      notes: 'Uses curl under the hood with HTTPie-like syntax.'
-    },
-    repoUrl: 'https://github.com/rs/curlie',
-    features: ['curl compatibility', 'Automatic formatting', 'Color output', 'JSON highlighting'],
-    tags: ['go', 'http', 'curl', 'open-source'],
-    useCases: ['Curl with better UX.', 'API testing.', 'HTTP debugging.'],
-    reviews: [],
-    version: 'v1.7.5'
   },
   {
     id: 'atac',
@@ -2669,29 +2385,6 @@ export const AGENTS: Agent[] = [
   // ============================================================================
   // --- 26.0 DATABASE CLIENTS ---
   // ============================================================================
-  {
-    id: 'mycli',
-    name: 'mycli',
-    description: 'MySQL client with autocompletion and syntax highlighting.',
-    longDescription: 'mycli is a command-line client for MySQL with auto-completion and syntax highlighting. It provides a modern interface for MySQL databases.',
-    category: AgentCategory.DATABASE,
-    stars: 11700,
-    language: 'Python',
-    installCommand: 'pip install mycli',
-    platformCommands: {
-      default: 'pip install mycli',
-      linux: 'pip install mycli',
-      macos: 'brew install mycli',
-      windows: 'pip install mycli',
-      notes: 'Connect with `mycli -u username -h host database`'
-    },
-    repoUrl: 'https://github.com/dbcli/mycli',
-    features: ['Auto-completion', 'Syntax highlighting', 'Multi-line editing', 'Smart completion'],
-    tags: ['python', 'database', 'mysql', 'open-source'],
-    useCases: ['MySQL database management.', 'Query writing.', 'Database exploration.'],
-    reviews: [],
-    version: 'v1.27.2'
-  },
   {
     id: 'pgcli',
     name: 'pgcli',
@@ -2737,29 +2430,6 @@ export const AGENTS: Agent[] = [
     useCases: ['Redis database management.', 'Cache debugging.', 'Redis Cluster operations.'],
     reviews: [],
     version: 'v1.15.0'
-  },
-  {
-    id: 'usql',
-    name: 'usql',
-    description: 'Universal SQL client with autocompletion and syntax highlighting.',
-    longDescription: 'usql is a universal command-line interface for SQL databases with support for PostgreSQL, MySQL, SQLite, Oracle, SQL Server, and many more.',
-    category: AgentCategory.DATABASE,
-    stars: 9100,
-    language: 'Go',
-    installCommand: 'brew install usql',
-    platformCommands: {
-      default: 'brew install usql',
-      linux: 'go install github.com/xo/usql@latest',
-      macos: 'brew install usql',
-      windows: 'scoop install usql',
-      notes: 'Supports 20+ SQL databases. Connect with `usql postgres://...`'
-    },
-    repoUrl: 'https://github.com/xo/usql',
-    features: ['Multi-database', 'Auto-completion', 'Syntax highlighting', '20+ drivers'],
-    tags: ['go', 'database', 'sql', 'open-source'],
-    useCases: ['Unified database client.', 'Multi-database projects.', 'Database migrations.'],
-    reviews: [],
-    version: 'v0.19.12'
   },
 
   // ============================================================================
@@ -2839,29 +2509,6 @@ export const AGENTS: Agent[] = [
     version: 'v0.24.0'
   },
   {
-    id: 'dust',
-    name: 'dust',
-    description: 'A more intuitive version of du in Rust.',
-    longDescription: 'dust is like du but more intuitive. It provides a tree-like visualization of disk usage with colors and percentages.',
-    category: AgentCategory.SHELL_UTILITY,
-    stars: 9500,
-    language: 'Rust',
-    installCommand: 'brew install dust',
-    platformCommands: {
-      default: 'brew install dust',
-      linux: 'cargo install du-dust',
-      macos: 'brew install dust',
-      windows: 'cargo install du-dust',
-      notes: 'Run `dust` to see disk usage tree. Much faster than du.'
-    },
-    repoUrl: 'https://github.com/bootandy/dust',
-    features: ['Tree visualization', 'Fast scanning', 'Percentage display', 'Color coding'],
-    tags: ['rust', 'shell', 'disk-usage', 'open-source'],
-    useCases: ['Disk usage analysis.', 'Finding large files.', 'Cleaning up space.'],
-    reviews: [],
-    version: 'v1.1.1'
-  },
-  {
     id: 'eza',
     name: 'eza',
     description: 'A modern replacement for ls.',
@@ -2932,95 +2579,3 @@ export const AGENTS: Agent[] = [
   }
 ];
 
-/**
- * CLI AI Evolution Timeline
- * Based on actual historical releases and technological milestones
- * Each entry represents a quantifiable shift in terminal/CLI capabilities
- */
-export const CLI_AI_TIMELINE = [
-  {
-    year: 1969,
-    event: 'Unix Shell Created',
-    detail: 'Thompson Shell establishes foundational CLI paradigm.',
-    impact: 'Set architectural patterns for 50+ years of terminal evolution'
-  },
-  {
-    year: 1989,
-    event: 'Bash 1.0 Released',
-    detail: 'GNU Bourne Again Shell becomes de facto standard.',
-    impact: 'Scripting automation reaches mainstream adoption'
-  },
-  {
-    year: 2005,
-    event: 'Git Version Control',
-    detail: 'Distributed VCS revolutionizes code collaboration.',
-    impact: 'Enables modern DevOps and CI/CD workflows'
-  },
-  {
-    year: 2011,
-    event: 'GitHub CLI Integration',
-    detail: 'API-driven terminal workflows emerge.',
-    impact: 'CLI becomes primary interface for code hosting platforms'
-  },
-  {
-    year: 2018,
-    event: 'GPT-2 Open Sourced',
-    detail: 'First accessible language model for developers.',
-    impact: 'Natural language processing becomes viable for CLI integration'
-  },
-  {
-    year: 2020,
-    event: 'GPT-3 API Launch',
-    detail: 'Large-scale language models available via API.',
-    impact: 'Enables first generation of AI-augmented terminal tools'
-  },
-  {
-    year: 2021,
-    event: 'GitHub Copilot Beta',
-    detail: 'AI pair programming enters mainstream development.',
-    impact: 'Demonstrates viability of context-aware code assistance'
-  },
-  {
-    year: 2022,
-    event: 'ChatGPT Public Release',
-    detail: 'Conversational AI reaches 100M users in 2 months.',
-    impact: 'Natural language interfaces become expected feature'
-  },
-  {
-    year: 2023,
-    event: 'Claude 2 with Tool Use',
-    detail: 'LLMs gain native function calling capabilities.',
-    impact: 'Autonomous code execution becomes production-viable'
-  },
-  {
-    year: 2023,
-    event: 'Aider & Open Interpreter Launch',
-    detail: 'First autonomous coding agents for local development.',
-    impact: 'Shift from code suggestion to autonomous implementation'
-  },
-  {
-    year: 2024,
-    event: 'Gemini 1.5 Pro (1M Context)',
-    detail: 'Extended context windows enable full codebase understanding.',
-    impact: 'Models can process entire projects in single inference'
-  },
-  {
-    year: 2024,
-    event: 'Claude 3.7 Sonnet + Computer Use',
-    detail: 'Multi-modal agents with screen reading and tool execution.',
-    impact: 'Terminal agents gain OS-level control capabilities'
-  },
-  {
-    year: 2024,
-    event: 'OpenHands & Plandex Scale',
-    detail: 'Sandbox environments and 2M+ token contexts.',
-    impact: 'Enterprise-scale autonomous development becomes feasible'
-  },
-  {
-    year: 2025,
-    event: 'Agentic CLI Ecosystem',
-    detail: 'Specialized terminal agents for every development phase.',
-    impact: 'Terminal transforms from tool to autonomous development platform',
-    projectedGrowthRate: 0.847 // 84.7% YoY growth in CLI AI adoption
-  }
-];

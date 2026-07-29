@@ -1,8 +1,10 @@
 
 import React from 'react';
 import { Agent } from '../types';
-import { Terminal, Star, Check, Plus, Minus, ArrowRightLeft, Activity, Github } from 'lucide-react';
+import { Terminal, Star, Check, Plus, Minus, ArrowRightLeft, Activity, Github, Users, AlertTriangle } from 'lucide-react';
 import { suggestCopyCommand } from '../utils/command';
+import { copyText } from '../utils/clipboard';
+import { AnalyticsService, AnalyticsEventType } from '../services/analyticsService';
 
 interface AgentCardProps {
   agent: Agent;
@@ -16,8 +18,8 @@ interface AgentCardProps {
   platform?: 'windows' | 'linux' | 'macos';
 }
 
-const AgentCard: React.FC<AgentCardProps> = React.memo(({ agent, onClick, isInSquad: _isInSquad, onToggleSquad: _onToggleSquad, isComparing, onToggleCompare, isBundled, onToggleBundle, platform }) => {
-  const [copied, setCopied] = React.useState(false);
+const AgentCard: React.FC<AgentCardProps> = React.memo(({ agent, onClick, isInSquad, onToggleSquad, isComparing, onToggleCompare, isBundled, onToggleBundle, platform }) => {
+  const [copyState, setCopyState] = React.useState<'idle' | 'copied' | 'failed'>('idle');
 
   const installCommand = React.useMemo(() => {
     if (platform && agent.platformCommands && agent.platformCommands[platform]) {
@@ -56,13 +58,22 @@ const AgentCard: React.FC<AgentCardProps> = React.memo(({ agent, onClick, isInSq
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(copyCommand).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }).catch(() => {
-      setCopied(false);
+    copyText(copyCommand).then((ok) => {
+      setCopyState(ok ? 'copied' : 'failed');
+      setTimeout(() => setCopyState('idle'), 2000);
+      if (ok) {
+        AnalyticsService.trackEvent(AnalyticsEventType.AGENT_INSTALL_COPY, {
+          agentId: agent.id,
+          agentName: agent.name,
+          platform: platform ?? 'default'
+        });
+      } else {
+        AnalyticsService.trackError('Clipboard copy failed', { context: 'agent_card_copy', agentId: agent.id }, 'low');
+      }
     });
   };
+
+  const copied = copyState === 'copied';
 
   return (
     <div
@@ -105,6 +116,19 @@ const AgentCard: React.FC<AgentCardProps> = React.memo(({ agent, onClick, isInSq
           </div>
           <div className="flex gap-2">
             <button
+              onClick={(e) => { e.stopPropagation(); onToggleSquad(agent); }}
+              className="p-2 rounded-lg transition-all"
+              style={{
+                backgroundColor: isInSquad ? 'var(--accent-glow)' : 'var(--bg-tertiary)',
+                border: isInSquad ? '1px solid var(--accent)' : '1px solid var(--border)',
+                color: isInSquad ? 'var(--accent)' : 'var(--text-muted)'
+              }}
+              title={isInSquad ? 'Remove from squad' : 'Recruit to squad (Mission Control)'}
+              aria-label={isInSquad ? 'Remove from squad' : 'Recruit to squad'}
+            >
+              <Users size={16} />
+            </button>
+            <button
               onClick={(e) => { e.stopPropagation(); onToggleBundle(agent); }}
               className="p-2 rounded-lg transition-all"
               style={{
@@ -125,6 +149,8 @@ const AgentCard: React.FC<AgentCardProps> = React.memo(({ agent, onClick, isInSq
                 border: isComparing ? '1px solid var(--accent)' : '1px solid var(--border)',
                 color: isComparing ? 'var(--accent)' : 'var(--text-muted)'
               }}
+              title={isComparing ? 'Remove from comparison' : 'Add to comparison'}
+              aria-label={isComparing ? 'Remove from comparison' : 'Add to comparison'}
             >
               <ArrowRightLeft size={16} />
             </button>
@@ -168,14 +194,16 @@ const AgentCard: React.FC<AgentCardProps> = React.memo(({ agent, onClick, isInSq
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all"
             style={{
               backgroundColor: copied ? 'var(--accent-glow)' : 'var(--accent)',
-              color: copied ? 'var(--success)' : 'var(--bg-primary)',
-              border: copied ? '1px solid var(--success)' : '1px solid transparent'
+              color: copied ? 'var(--success)' : copyState === 'failed' ? 'var(--bg-primary)' : 'var(--bg-primary)',
+              border: copied ? '1px solid var(--success)' : copyState === 'failed' ? '1px solid var(--error)' : '1px solid transparent'
             }}
-            title={copied ? 'Copied' : copyCommand}
+            title={copied ? 'Copied' : copyState === 'failed' ? 'Copy failed — select the command manually' : copyCommand}
           >
-            {copied ? <Check size={14} /> : <span className="font-mono">$</span>}
+            {copied ? <Check size={14} /> : copyState === 'failed' ? <AlertTriangle size={14} style={{ color: 'var(--error)' }} /> : <span className="font-mono">$</span>}
             {copied ? (
               'COPIED'
+            ) : copyState === 'failed' ? (
+              'COPY_FAILED'
             ) : (
               <span className="font-mono text-[10px] truncate max-w-[220px]">{copyCommand}</span>
             )}

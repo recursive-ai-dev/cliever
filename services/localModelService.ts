@@ -1,6 +1,6 @@
 import { Agent, AgentCategory } from '../types';
 import { logger } from './logger';
-import { sanitizeChatMessage, sanitizeCommand, sanitizeDisplayText, sanitizeUrl } from '../utils/sanitization';
+import { sanitizeChatMessage, sanitizeDisplayText } from '../utils/sanitization';
 import { UniversalLinguisticEngine } from '../model/lapoet-main/src/UniversalLinguisticEngine.js';
 import { getTrainedLaPoetHints } from './lapoetTrainedService';
 
@@ -628,52 +628,6 @@ export const askExpert = async (
   ].join('\n');
 
   return response;
-};
-
-const seededAgents: Agent[] = [
-  {
-    id: 'lapoet-cli',
-    name: 'LaPoet CLI',
-    description: 'Local neuro-symbolic text weaver for structured CLI insights.',
-    longDescription: 'Uses the Universal Linguistic Engine to draft concise analyses and command hints fully offline.',
-    category: AgentCategory.TERMINAL_UTILITY,
-    stars: 8200,
-    language: 'TypeScript',
-    installCommand: 'npm install -g lapoet-cli',
-    repoUrl: 'https://example.com/lapoet-cli',
-    features: ['Offline analysis', 'Grammar-guided output', 'Deterministic responses'],
-    tags: ['local-llm', 'utility', 'privacy'],
-    useCases: ['Generating command hints offline.', 'Explaining tool choices.', 'Drafting quick comparisons.'],
-    reviews: []
-  },
-  {
-    id: 'squad-sim',
-    name: 'SquadSim Local',
-    description: 'Deterministic multi-agent orchestrator for offline rehearsals.',
-    longDescription: 'Simulates squad conversations using grammar-driven templates to plan handoffs without remote calls.',
-    category: AgentCategory.AUTONOMOUS,
-    stars: 6100,
-    language: 'Python',
-    installCommand: 'pip install squadsim-local',
-    repoUrl: 'https://example.com/squadsim',
-    features: ['Offline simulations', 'Role assignment', 'Transcript generation'],
-    tags: ['automation', 'local', 'planning'],
-    useCases: ['Planning integration tests.', 'Dry-running migrations.', 'Coordinating staged rollouts.'],
-    reviews: []
-  }
-];
-
-export const fetchTrendingAgents = async (existingNames: string[]): Promise<Agent[]> => {
-  const existingLower = new Set(existingNames.map(n => n.toLowerCase()));
-  const fresh = seededAgents.filter(a => !existingLower.has(a.name.toLowerCase())).slice(0, 2);
-
-  return fresh.map(agent => ({
-    ...agent,
-    repoUrl: sanitizeUrl(agent.repoUrl) || 'https://example.com',
-    installCommand: sanitizeCommand(agent.installCommand) || 'echo "Install command unavailable"',
-    // Prime for real users: don't generate synthetic reviews.
-    reviews: []
-  }));
 };
 
 /**
