@@ -42,7 +42,7 @@ const CommandGenerator: React.FC<CommandGeneratorProps> = ({ onClose }) => {
   const handleCopy = () => {
     // Extract code from markdown block if present, otherwise copy whole text
     const codeMatch = output.match(/```(?:bash|zsh|sh)?\n([\s\S]*?)\n```/);
-    const textToCopy = codeMatch ? codeMatch[1] : output;
+    const textToCopy = codeMatch?.[1] ?? output;
     
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);

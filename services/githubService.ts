@@ -56,7 +56,8 @@ class LRUCache<T> {
 
     // Check if expired
     if (Date.now() - entry.timestamp > this.ttlMs) {
-      this.cache.delete(key);
+      // Do not delete: stale entries are preserved for ETag / offline fallback.
+      // Eviction happens only on capacity overflow in set().
       return null;
     }
 
@@ -88,7 +89,17 @@ class LRUCache<T> {
   }
 
   getEtag(key: string): string | undefined {
+    // Bypass TTL: etags are valid even for expired entries (used for conditional requests)
     return this.cache.get(key)?.etag;
+  }
+
+  /**
+   * Returns cached data even if expired (for 304 fallback and offline resilience).
+   * Does NOT promote the entry (no LRU reorder) since the data is stale.
+   */
+  getStale(key: string): T | null {
+    const entry = this.cache.get(key);
+    return entry ? entry.data : null;
   }
 }
 
@@ -185,21 +196,26 @@ export const GitHubService = {
 
     const cacheKey = `${parsed.owner}/${parsed.repo}`;
 
-    // Check cache first
+    // Check cache first (returns null if expired or absent)
     const cached = repoMetadataCache.get(cacheKey);
     if (cached) return cached;
 
+    // Preserve stale entry for ETag conditional requests and offline fallback.
+    // The fresh cache.get() above already deleted expired entries, so we
+    // look up the etag/data from the raw internal store via getEtag/getStale.
+    const staleEtag = repoMetadataCache.getEtag(cacheKey);
+    const staleData = repoMetadataCache.getStale(cacheKey);
+
     try {
       return await circuitBreaker.execute(async () => {
-        const headers: HeadersInit = {
+        const headers: Record<string, string> = {
           'Accept': 'application/vnd.github+json',
           'X-GitHub-Api-Version': GITHUB_API_VERSION
         };
 
-        // Add ETag for conditional request
-        const etag = repoMetadataCache.getEtag(cacheKey);
-        if (etag) {
-          headers['If-None-Match'] = etag;
+        // Add ETag for conditional request when stale data exists
+        if (staleEtag) {
+          headers['If-None-Match'] = staleEtag;
         }
 
         const response = await fetch(
@@ -207,9 +223,10 @@ export const GitHubService = {
           { headers }
         );
 
-        // 304 Not Modified - use cached data
-        if (response.status === 304 && cached) {
-          return cached;
+        // 304 Not Modified - refresh the TTL on stale data and return it
+        if (response.status === 304 && staleData) {
+          repoMetadataCache.set(cacheKey, staleData, staleEtag);
+          return staleData;
         }
 
         if (!response.ok) {
@@ -237,7 +254,7 @@ export const GitHubService = {
         cacheKey,
         message: getErrorMessage(error)
       });
-      return cached || null; // Fallback to stale cache if available
+      return staleData || null; // Fallback to stale cache if available
     }
   },
 

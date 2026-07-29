@@ -177,6 +177,7 @@ class StatisticalAggregator {
   }
 
   getStdDev(): number {
+    if (this.values.length === 0) return 0;
     const mean = this.getMean();
     const squaredDiffs = this.values.map(v => Math.pow(v - mean, 2));
     const variance = squaredDiffs.reduce((a, b) => a + b, 0) / this.values.length;
@@ -275,12 +276,16 @@ export const AnalyticsService = {
   /**
    * Get session statistics
    */
-  getSessionStats: () => ({
-    sessionId: sessionManager.getSessionId(),
-    durationMs: sessionManager.getSessionDuration(),
-    eventCount: sessionManager.getEventCount(),
-    eventsPerMinute: (sessionManager.getEventCount() / (sessionManager.getSessionDuration() / 60000)) || 0
-  }),
+  getSessionStats: () => {
+    const durationMs = sessionManager.getSessionDuration();
+    const durationMinutes = durationMs / 60000;
+    return {
+      sessionId: sessionManager.getSessionId(),
+      durationMs,
+      eventCount: sessionManager.getEventCount(),
+      eventsPerMinute: durationMinutes > 0 ? sessionManager.getEventCount() / durationMinutes : 0
+    };
+  },
 
   /**
    * Get event statistics by type
@@ -336,7 +341,9 @@ export const AnalyticsService = {
       totalErrors: errors.length,
       bySeverity,
       recentErrors: recent,
-      errorRate: errors.length / (sessionManager.getSessionDuration() / 60000) // errors per minute
+      errorRate: sessionManager.getSessionDuration() > 0
+        ? errors.length / (sessionManager.getSessionDuration() / 60000)
+        : 0 // errors per minute (guard against division by zero at session start)
     };
   },
 
