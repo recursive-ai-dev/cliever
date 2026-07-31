@@ -101,11 +101,11 @@ export const AGENTS: Agent[] = [
     category: AgentCategory.TERMINAL_UTILITY,
     stars: 12500,
     language: 'TypeScript',
-    installCommand: 'brew install --cask waveterm',
+    installCommand: 'brew install --cask wave',
     platformCommands: {
-      default: 'brew install --cask waveterm',
-      windows: 'winget install WaveTerm.WaveTerm',
-      macos: 'brew install --cask waveterm',
+      default: 'brew install --cask wave',
+      windows: 'winget install CommandLine.Wave',
+      macos: 'brew install --cask wave',
       linux: 'Download AppImage from github.com/wavetermdev/waveterm/releases',
       notes: 'Cross-platform Electron app. Check releases page for latest builds.'
     },
@@ -154,7 +154,7 @@ export const AGENTS: Agent[] = [
       windows: 'npm install -g @anthropic-ai/claude-code',
       notes: 'Requires Node.js 18+. Set ANTHROPIC_API_KEY environment variable before use.'
     },
-    repoUrl: 'https://github.com/anthropic/claude-code',
+    repoUrl: 'https://github.com/anthropics/claude-code',
     features: ['Context Building', 'BashTool execution', 'Tiered Permissions'],
     tags: ['coding', 'autonomous', 'sota'],
     useCases: ['Complex refactoring.', 'Autonomous bug detection.', 'CI/CD pipeline automation.'],
@@ -201,7 +201,7 @@ export const AGENTS: Agent[] = [
       windows: 'pip install aider-chat',
       notes: 'Python 3.9+ required. Works with multiple LLM providers (OpenAI, Anthropic, local models).'
     },
-    repoUrl: 'https://github.com/paul-gauthier/aider',
+    repoUrl: 'https://github.com/Aider-AI/aider',
     features: ['Repository Mapping', 'Deep Git Integration', 'Multi-LLM Support'],
     tags: ['python', 'git', 'coding'],
     useCases: ['Large module refactoring.', 'Managing project-wide code changes.', 'Git conflict resolution.'],
@@ -219,9 +219,9 @@ export const AGENTS: Agent[] = [
     installCommand: 'curl -sL https://plandex.ai/install.sh | bash',
     platformCommands: {
       default: 'curl -sL https://plandex.ai/install.sh | bash',
-      windows: 'iwr -useb https://plandex.ai/install.ps1 | iex',
-      macos: 'brew install plandex-ai/tap/plandex',
-      notes: 'Requires Go 1.21+ for building from source. Pre-built binaries available.'
+      windows: 'Use WSL and run the Linux install script (no native Windows/PowerShell installer)',
+      macos: 'curl -sL https://plandex.ai/install.sh | bash',
+      notes: 'Requires Go 1.21+ for building from source. Pre-built binaries available. No Homebrew formula/tap exists.'
     },
     repoUrl: 'https://github.com/plandex-ai/plandex',
     features: ['2M Context window', 'Automated Debugging', 'Tree-sitter indexing'],
@@ -238,13 +238,13 @@ export const AGENTS: Agent[] = [
     category: AgentCategory.AUTONOMOUS,
     stars: 25000,
     language: 'Python',
-    installCommand: 'docker run -it ghcr.io/all-hands-ai/openhands',
+    installCommand: 'docker run -it ghcr.io/openhands/agent-canvas:1.8.0',
     platformCommands: {
-      default: 'docker run -it ghcr.io/all-hands-ai/openhands',
-      docker: 'docker run -it -v $(pwd):/workspace ghcr.io/all-hands-ai/openhands',
+      default: 'docker run -it ghcr.io/openhands/agent-canvas:1.8.0',
+      docker: 'docker run -it -v $(pwd):/workspace ghcr.io/openhands/agent-canvas:1.8.0',
       notes: 'Requires Docker. The sandbox provides full isolation from your host system.'
     },
-    repoUrl: 'https://github.com/All-Hands-AI/OpenHands',
+    repoUrl: 'https://github.com/OpenHands/OpenHands',
     features: ['Native Sandboxing', 'Model-Agnostic', 'Secure Isolation'],
     tags: ['python', 'security', 'sandbox'],
     useCases: ['Safe execution of untrusted scripts.', 'Sandboxed feature building.', 'Security analysis of code.'],
@@ -259,13 +259,14 @@ export const AGENTS: Agent[] = [
     category: AgentCategory.CODING,
     stars: 15000,
     language: 'Go',
-    installCommand: 'gh extension install github/gh-copilot',
+    installCommand: 'npm install -g @github/copilot',
     platformCommands: {
-      default: 'gh extension install github/gh-copilot',
-      windows: 'gh extension install github/gh-copilot',
-      notes: 'Requires GitHub CLI (gh) to be installed first. Needs active Copilot subscription.'
+      default: 'npm install -g @github/copilot',
+      windows: 'winget install GitHub.Copilot',
+      macos: 'brew install --cask copilot-cli',
+      notes: 'GitHub deprecated the old `gh extension install github/gh-copilot` in favor of this standalone agentic CLI (Jan 2026). Needs active Copilot subscription.'
     },
-    repoUrl: 'https://github.com/github/gh-copilot',
+    repoUrl: 'https://github.com/github/copilot-cli',
     features: ['Agent Mode Activation', 'Official Workspace Indexing', 'Multi-file Edits'],
     tags: ['github', 'official', 'productivity'],
     useCases: ['Automating PR reviews.', 'Complex workspace navigation.', 'Iterative feature development.'],
@@ -280,14 +281,14 @@ export const AGENTS: Agent[] = [
     category: AgentCategory.TERMINAL_UTILITY,
     stars: 3000,
     language: 'Go',
-    installCommand: 'brew install amazon-q',
+    installCommand: 'brew install --cask amazon-q',
     platformCommands: {
-      default: 'brew install amazon-q',
-      windows: 'winget install Amazon.AWSCLI',
-      macos: 'brew install amazon-q',
-      notes: 'AWS account required. Integrates with AWS IAM for authentication.'
+      default: 'brew install --cask amazon-q',
+      windows: 'Not natively supported; use WSL and follow the Linux install steps',
+      macos: 'brew install --cask amazon-q',
+      notes: 'AWS account required. Integrates with AWS IAM for authentication. No native Windows package — `winget install Amazon.AWSCLI` installs the unrelated AWS CLI, not Amazon Q.'
     },
-    repoUrl: 'https://aws.amazon.com/q/',
+    repoUrl: 'https://github.com/aws/amazon-q-developer-cli',
     features: ['Ghost Text Suggestions', 'Intelligent completions', 'AWS native optimization'],
     tags: ['aws', 'cloud', 'productivity'],
     useCases: ['Accelerating AWS deployments.', 'Learning complex CLI flags.', 'Faster terminal navigation.'],
@@ -302,8 +303,12 @@ export const AGENTS: Agent[] = [
     category: AgentCategory.TERMINAL_UTILITY,
     stars: 10000,
     language: 'Python',
-    installCommand: 'pip install gemini-chat-cli',
-    repoUrl: 'https://github.com/google/gemini-cli',
+    installCommand: 'npm install -g @google/gemini-cli',
+    platformCommands: {
+      default: 'npm install -g @google/gemini-cli',
+      notes: 'Requires Node.js 18+. The pip package "gemini-chat-cli" does not exist; install via npm.'
+    },
+    repoUrl: 'https://github.com/google-gemini/gemini-cli',
     features: ['1M Context support', 'Native Tool Integration', 'Google Cloud backend'],
     tags: ['google', 'sota', 'utility'],
     useCases: ['Analyzing massive documentation.', 'Fast coding queries.', 'Large-scale repo summarization.'],
@@ -353,7 +358,7 @@ export const AGENTS: Agent[] = [
     installCommand: 'brew install --cask lm-studio',
     platformCommands: {
       default: 'brew install --cask lm-studio',
-      windows: 'winget install LMStudio.LMStudio',
+      windows: 'winget install ElementLabs.LMStudio',
       macos: 'brew install --cask lm-studio',
       notes: 'Download directly from lmstudio.ai for all platforms. GUI-based installation is straightforward.'
     },
@@ -653,7 +658,7 @@ export const AGENTS: Agent[] = [
       default: 'pip install gpt-engineer',
       notes: 'Run "gpte" with a project description. Iterates with feedback for refinement.'
     },
-    repoUrl: 'https://github.com/gpt-engineer/gpt-engineer',
+    repoUrl: 'https://github.com/AntonOsika/gpt-engineer',
     features: ['Project scaffolding', 'Iterative refinement', 'Spec-driven builds'],
     tags: ['python', 'coding', 'planning'],
     useCases: ['Rapid project bootstrapping.', 'Spec-driven prototypes.', 'Iterative codebase generation.'],
@@ -668,11 +673,11 @@ export const AGENTS: Agent[] = [
     category: AgentCategory.FRAMEWORK,
     stars: 8700,
     language: 'Go',
-    installCommand: 'curl -sL https://get.gptscript.ai | sh',
+    installCommand: 'brew install gptscript',
     platformCommands: {
-      default: 'curl -sL https://get.gptscript.ai | sh',
-      windows: 'iwr -useb https://get.gptscript.ai/install.ps1 | iex',
-      notes: 'Create .gpt files with natural language tasks. Run with "gptscript <file>.gpt".'
+      default: 'brew install gptscript',
+      windows: 'winget install gptscript-ai.gptscript',
+      notes: 'Create .gpt files with natural language tasks. Run with "gptscript <file>.gpt". Note: the gptscript-ai GitHub org was archived in 2026 and get.gptscript.ai no longer resolves — install via brew/winget or a release binary instead of the old curl script.'
     },
     repoUrl: 'https://github.com/gptscript-ai/gptscript',
     features: ['Scripted agents', 'Tool orchestration', 'Reusable workflows'],
@@ -689,7 +694,7 @@ export const AGENTS: Agent[] = [
     category: AgentCategory.RESEARCH,
     stars: 18000,
     language: 'Go',
-    installCommand: 'go install github.com/danielmiessler/fabric@latest',
+    installCommand: 'go install github.com/danielmiessler/fabric/cmd/fabric@latest',
     repoUrl: 'https://github.com/danielmiessler/fabric',
     features: ['Pattern Library', 'Consistent outputs', 'Summarization'],
     tags: ['prompts', 'productivity', 'framework'],
@@ -705,14 +710,14 @@ export const AGENTS: Agent[] = [
     category: AgentCategory.TERMINAL_UTILITY,
     stars: 3500,
     language: 'Rust',
-    installCommand: 'brew install ask-sh',
+    installCommand: 'cargo install ask-sh',
     platformCommands: {
-      default: 'brew install ask-sh',
-      macos: 'brew install ask-sh',
+      default: 'cargo install ask-sh',
+      macos: 'cargo install ask-sh',
       linux: 'cargo install ask-sh',
-      notes: 'Reads terminal buffer for context. No copy-paste needed.'
+      notes: 'Reads terminal buffer for context. No copy-paste needed. No Homebrew formula exists; install via cargo.'
     },
-    repoUrl: 'https://github.com/tailcallhq/ask-sh',
+    repoUrl: 'https://github.com/combinatrix-ai/ask.sh',
     features: ['Buffer reading', 'Direct injection', 'Context awareness'],
     tags: ['rust', 'debugging', 'productivity'],
     useCases: ['Instant debugging of terminal errors.', 'Command auto-correction.', 'Fast tool navigation.'],
@@ -769,19 +774,19 @@ export const AGENTS: Agent[] = [
     description: 'Deploys static websites to AWS/GitHub with zero manual work.',
     longDescription: 'Uses Pulumi to provision secure-by-default infrastructure for static sites automatically.',
     category: AgentCategory.INFRASTRUCTURE,
-    stars: 2500,
-    language: 'Go',
+    stars: 24,
+    language: 'JavaScript',
     installCommand: 'npm install -g pulstack',
     platformCommands: {
       default: 'npm install -g pulstack',
-      notes: 'Requires Pulumi CLI and AWS credentials. IaC for static sites made simple.'
+      notes: 'Requires Pulumi CLI and AWS credentials. IaC for static sites made simple. Small hobby project — expect limited maintenance.'
     },
-    repoUrl: 'https://github.com/pulumi/pulumi',
+    repoUrl: 'https://github.com/Kiran1689/pulstack',
     features: ['Secure by default', 'Zero manual work', 'IaC native'],
     tags: ['iac', 'aws', 'automation'],
     useCases: ['Rapid static site hosting.', 'Secure cloud provisioning.', 'Automatic site teardown.'],
     reviews: [],
-    version: 'v1.0.2'
+    version: 'v1.0.0'
   },
   // --- 6.5 ENTERTAINMENT & LEISURE ---
   {
@@ -825,7 +830,7 @@ export const AGENTS: Agent[] = [
     tags: ['rust', 'anime', 'entertainment', 'tui'],
     useCases: ['Fast anime list management.', 'Browsing seasonal airings.', 'Quickly updating episode counts.'],
     reviews: [],
-    version: 'v0.5.0'
+    version: 'v0.2.1'
   }
 
   ,
@@ -869,7 +874,7 @@ export const AGENTS: Agent[] = [
       linux: 'sudo apt install glab',
       notes: 'Authenticate with `glab auth login` after install.'
     },
-    repoUrl: 'https://github.com/gitlab-org/cli',
+    repoUrl: 'https://gitlab.com/gitlab-org/cli',
     features: ['Merge request workflows', 'Issue management', 'Pipeline inspection', 'Release tooling'],
     tags: ['git', 'open-source', 'productivity'],
     useCases: ['Open and review merge requests quickly.', 'Check CI pipeline status in terminal.', 'Manage issues without leaving the CLI.'],
@@ -889,8 +894,8 @@ export const AGENTS: Agent[] = [
       default: 'brew tap hashicorp/tap && brew install hashicorp/tap/terraform',
       windows: 'winget install Hashicorp.Terraform',
       macos: 'brew tap hashicorp/tap && brew install hashicorp/tap/terraform',
-      linux: 'sudo apt install terraform',
-      notes: 'Run `terraform -help` to verify; providers download on first use.'
+      linux: 'wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg && echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list && sudo apt update && sudo apt install terraform',
+      notes: 'Run `terraform -help` to verify; providers download on first use. `terraform` is not in default Ubuntu/Debian apt repos — the official HashiCorp apt repo must be added first.'
     },
     repoUrl: 'https://github.com/hashicorp/terraform',
     features: ['Multi-cloud provisioning', 'State management', 'Plan/apply workflows', 'Provider ecosystem'],
@@ -912,8 +917,8 @@ export const AGENTS: Agent[] = [
       default: 'brew install kubectl',
       windows: 'winget install Kubernetes.kubectl',
       macos: 'brew install kubectl',
-      linux: 'sudo apt install kubectl',
-      notes: 'Use `kubectl version --client` to verify install.'
+      linux: 'curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list && sudo apt update && sudo apt install kubectl',
+      notes: 'Use `kubectl version --client` to verify install. `kubectl` is not in default Ubuntu/Debian apt repos — add the pkgs.k8s.io community repo first.'
     },
     repoUrl: 'https://github.com/kubernetes/kubernetes',
     features: ['Cluster control', 'Resource inspection', 'Logs/exec debugging', 'Context switching'],
@@ -1538,9 +1543,9 @@ export const AGENTS: Agent[] = [
     platformCommands: {
       default: 'npm install -g tldr',
       linux: 'pip install tldr',
-      macos: 'brew install tldr',
+      macos: 'brew install tlrc',
       windows: 'npm install -g tldr',
-      notes: 'Run `tldr <command>` to get quick examples. Update cache with `tldr --update`.'
+      notes: 'Run `tldr <command>` to get quick examples. Update cache with `tldr --update`. Homebrew formula `tldr` is deprecated; use `tlrc` (the Rust client) on macOS instead.'
     },
     repoUrl: 'https://github.com/tldr-pages/tldr',
     features: ['Practical examples', 'Community maintained', 'Offline mode', 'Multi-language'],
@@ -1670,7 +1675,7 @@ export const AGENTS: Agent[] = [
     tags: ['python', 'database', 'productivity', 'open-source'],
     useCases: ['Interactive MySQL queries.', 'Database administration.', 'Faster SQL development.'],
     reviews: [],
-    version: '1.27.2'
+    version: '2.8.0'
   },
   {
     id: 'usql',
@@ -1680,13 +1685,13 @@ export const AGENTS: Agent[] = [
     category: AgentCategory.DATABASE,
     stars: 9200,
     language: 'Go',
-    installCommand: 'brew install usql',
+    installCommand: 'brew install xo/xo/usql',
     platformCommands: {
-      default: 'brew install usql',
+      default: 'brew install xo/xo/usql',
       linux: 'go install github.com/xo/usql@latest',
-      macos: 'brew install usql',
+      macos: 'brew install xo/xo/usql',
       windows: 'scoop install usql',
-      notes: 'Connect with URLs: `usql postgres://user:pass@host/db`'
+      notes: 'Connect with URLs: `usql postgres://user:pass@host/db`. usql is not in homebrew-core; requires the xo/xo tap.'
     },
     repoUrl: 'https://github.com/xo/usql',
     features: ['Multi-database', 'Auto-completion', 'Copy support', 'Meta-commands'],
@@ -1756,10 +1761,10 @@ export const AGENTS: Agent[] = [
     installCommand: 'brew install glow',
     platformCommands: {
       default: 'brew install glow',
-      linux: 'sudo apt install glow',
+      linux: 'sudo snap install glow',
       macos: 'brew install glow',
       windows: 'scoop install glow',
-      notes: 'Run `glow README.md` or `glow` for TUI mode.'
+      notes: 'Run `glow README.md` or `glow` for TUI mode. Not in default Debian/Ubuntu apt repos; use snap, or add Charm\'s apt repo (repo.charm.sh) if you need apt specifically.'
     },
     repoUrl: 'https://github.com/charmbracelet/glow',
     features: ['Styled rendering', 'Stash mode', 'Theme support', 'Pager integration'],
@@ -1908,8 +1913,8 @@ export const AGENTS: Agent[] = [
       default: 'brew install tig',
       linux: 'sudo apt install tig',
       macos: 'brew install tig',
-      windows: 'scoop install tig',
-      notes: 'Run `tig` in any git repo to browse history.'
+      windows: 'Included with Git for Windows (since 2.14.2), or use Cygwin',
+      notes: 'Run `tig` in any git repo to browse history. No Scoop/Chocolatey package exists; on Windows it ships bundled with Git for Windows.'
     },
     repoUrl: 'https://github.com/jonas/tig',
     features: ['Log browsing', 'Diff viewing', 'Blame view', 'Staging interface'],
@@ -1934,7 +1939,7 @@ export const AGENTS: Agent[] = [
       windows: 'scoop install gitui',
       notes: 'Run `gitui` in any git repo. Supports custom keybindings.'
     },
-    repoUrl: 'https://github.com/extrawurst/gitui',
+    repoUrl: 'https://github.com/gitui-org/gitui',
     features: ['Fast performance', 'Async Git', 'Staging chunks', 'Commit signing'],
     tags: ['rust', 'git', 'productivity', 'open-source'],
     useCases: ['Fast Git interactions.', 'Staging and committing.', 'Git history browsing.'],
@@ -1981,7 +1986,7 @@ export const AGENTS: Agent[] = [
       default: 'brew install task',
       linux: 'sudo apt install taskwarrior',
       macos: 'brew install task',
-      windows: 'scoop install task',
+      windows: 'Install via WSL (no native Windows package; Scoop\'s "task" is an unrelated build tool)',
       notes: 'Add tasks with `task add`. List with `task list`. See `task help`.'
     },
     repoUrl: 'https://github.com/GothenburgBitFactory/taskwarrior',
@@ -2028,7 +2033,7 @@ export const AGENTS: Agent[] = [
       macos: 'brew install watson',
       notes: 'Start tracking: `watson start <project>`. Stop: `watson stop`.'
     },
-    repoUrl: 'https://github.com/TailorDev/Watson',
+    repoUrl: 'https://github.com/jazzband/Watson',
     features: ['Project tracking', 'Tags', 'Reports', 'Export formats'],
     tags: ['python', 'productivity', 'time-tracking', 'open-source'],
     useCases: ['Time tracking.', 'Client billing.', 'Productivity analysis.'],
@@ -2194,10 +2199,10 @@ export const AGENTS: Agent[] = [
     installCommand: 'brew install helix',
     platformCommands: {
       default: 'brew install helix',
-      linux: 'sudo apt install helix',
+      linux: 'sudo snap install helix --classic',
       macos: 'brew install helix',
       windows: 'scoop install helix',
-      notes: 'Launch with `hx`. Built-in LSP and tree-sitter support.'
+      notes: 'Launch with `hx`. Built-in LSP and tree-sitter support. Not in official Debian/Ubuntu apt repos; use snap, flatpak, or the AppImage from the releases page.'
     },
     repoUrl: 'https://github.com/helix-editor/helix',
     features: ['Built-in LSP', 'Tree-sitter', 'Multiple cursors', 'Selection-first'],
@@ -2222,7 +2227,7 @@ export const AGENTS: Agent[] = [
       windows: 'scoop install micro',
       notes: 'Intuitive keybindings (Ctrl+S save, Ctrl+Q quit). Supports plugins.'
     },
-    repoUrl: 'https://github.com/zyedidia/micro',
+    repoUrl: 'https://github.com/micro-editor/micro',
     features: ['Syntax highlighting', 'Plugin system', 'Mouse support', 'Multi-cursor'],
     tags: ['go', 'editor', 'productivity', 'open-source'],
     useCases: ['Quick file editing.', 'Easy terminal editor.', 'nano replacement.'],
@@ -2243,9 +2248,9 @@ export const AGENTS: Agent[] = [
     platformCommands: {
       default: 'pip install youtube-dl',
       windows: 'pip install youtube-dl',
-      macos: 'brew install youtube-dl',
+      macos: 'pip install youtube-dl',
       linux: 'sudo apt install youtube-dl || pip install youtube-dl',
-      notes: 'For latest features, use yt-dlp instead (youtube-dl fork)'
+      notes: 'Homebrew removed the youtube-dl formula (Nov 2024) in favor of yt-dlp, so `brew install youtube-dl` no longer works — use pip on macOS instead. For latest features, use yt-dlp instead (youtube-dl fork).'
     },
     repoUrl: 'https://github.com/ytdl-org/youtube-dl',
     features: ['1000+ sites', 'Quality selection', 'Playlist support', 'Subtitles'],
@@ -2499,7 +2504,7 @@ export const AGENTS: Agent[] = [
       linux: 'sudo apt install bat',
       macos: 'brew install bat',
       windows: 'scoop install bat',
-      notes: 'Command is `bat`. Use `bat --style=plain` for plain output.'
+      notes: 'On Debian/Ubuntu the apt package installs the binary as `batcat` (name clash with bacula-console-qt); alias it to `bat` or symlink manually. Use `bat --style=plain` for plain output.'
     },
     repoUrl: 'https://github.com/sharkdp/bat',
     features: ['Syntax highlighting', 'Git integration', 'Automatic paging', 'Line numbers'],
