@@ -41,7 +41,7 @@ const CollaborationLayer: React.FC<CollaborationLayerProps> = ({ squad, onClose,
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: 'var(--bg-primary)' }} role="dialog" aria-modal="true" aria-label="Mission Control">
             {/* Header */}
             <div className="px-6 py-4 flex justify-between items-center" style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
                 <div className="flex items-center gap-3">

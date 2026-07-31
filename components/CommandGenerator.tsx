@@ -56,7 +56,8 @@ const CommandGenerator: React.FC<CommandGeneratorProps> = ({ onClose }) => {
     <div className="absolute inset-0 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }} onClick={onClose}></div>
       
     <div className="relative w-full max-w-2xl mx-auto rounded-xl overflow-hidden flex flex-col max-h-[85vh]"
-         style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--accent)', boxShadow: '0 0 50px var(--accent-glow)' }}>
+         style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--accent)', boxShadow: '0 0 50px var(--accent-glow)' }}
+         role="dialog" aria-modal="true" aria-label="Shell command generator">
         
         {/* Header */}
         <div className="p-4 flex justify-between items-center"

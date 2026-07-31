@@ -75,7 +75,8 @@ const ComparisonLayer: React.FC<ComparisonLayerProps> = ({ agentA, agentB, onClo
 
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 transform translate-y-0 max-h-[88vh] overflow-y-auto flex flex-col rounded-t-3xl md:rounded-none"
-            style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--accent)', boxShadow: '0 -5px 50px rgba(0,0,0,0.9)' }}>
+            style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--accent)', boxShadow: '0 -5px 50px rgba(0,0,0,0.9)' }}
+            role="dialog" aria-modal="true" aria-label="Agent comparison engine">
             <div className="max-w-7xl mx-auto w-full p-4 md:p-6 flex-1 flex flex-col">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6">

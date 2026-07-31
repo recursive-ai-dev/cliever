@@ -153,6 +153,7 @@ const TelemetryLayer: React.FC<TelemetryLayerProps> = ({ onClose }) => {
         className="relative w-full max-w-6xl mx-auto rounded-2xl overflow-hidden flex flex-col max-h-[90vh]"
         style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--accent)', boxShadow: '0 0 50px var(--accent-glow)' }}
         role="dialog"
+        aria-modal="true"
         aria-label="System telemetry"
       >
         {/* Header */}

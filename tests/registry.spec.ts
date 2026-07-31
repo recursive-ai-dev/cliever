@@ -128,9 +128,10 @@ test.describe('bundle', () => {
     const grid = page.locator('main .grid');
     await grid.getByRole('button', { name: 'Add to bundle' }).first().click();
     await page.getByRole('button', { name: 'Take bundle' }).click();
-    await expect(page.getByText('TAKE_BUNDLE')).toBeVisible();
-    await expect(page.getByText('BUNDLE_OUTPUT')).toBeVisible();
-    await expect(page.getByText(/1 command saved/)).toBeVisible();
+    const dialog = page.getByRole('dialog', { name: 'Take bundle' });
+    await expect(dialog.getByText('TAKE_BUNDLE')).toBeVisible();
+    await expect(dialog.getByText('BUNDLE_OUTPUT')).toBeVisible();
+    await expect(dialog.getByText(/1 command saved/)).toBeVisible();
     await page.keyboard.press('Escape');
   });
 });

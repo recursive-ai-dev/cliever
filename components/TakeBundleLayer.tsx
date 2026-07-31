@@ -95,6 +95,9 @@ const TakeBundleLayer: React.FC<TakeBundleLayerProps> = ({ agents, bundledAgentI
       <div
         className="relative w-full max-w-3xl mx-auto rounded-2xl overflow-hidden flex flex-col max-h-[85vh]"
         style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--accent)', boxShadow: '0 0 50px var(--accent-glow)' }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Take bundle"
       >
         <div
           className="p-4 flex justify-between items-center"
