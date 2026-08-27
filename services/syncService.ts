@@ -1,5 +1,5 @@
 
-import { Agent, AgentStatus } from '../types';
+import { Agent } from '../types';
 import { logger } from './logger';
 import { getErrorMessage, sanitizeUrl } from '../utils/sanitization';
 import { GitHubService } from './githubService';
@@ -14,7 +14,7 @@ import { GitHubService } from './githubService';
 // Cache for repository status checks (TTL: 5 minutes)
 interface StatusCache {
   [repoUrl: string]: {
-    status: AgentStatus;
+    success: boolean;
     timestamp: number;
     etag?: string;
   };
@@ -31,7 +31,6 @@ const STATUS_CHECK_TIMEOUT_MS = 6000;
  * A repository pushed to within this window is considered to have newer
  * development than the registry snapshot (i.e. an update is likely available).
  */
-const UPDATE_WINDOW_MS = 45 * 24 * 60 * 60 * 1000; // 45 days
 
 let consecutiveFailures = 0;
 let circuitOpenUntil = 0;
@@ -97,29 +96,19 @@ const fnv1a = (input: string): number => {
   return hash >>> 0;
 };
 
-const seededFallbackStatus = (agent: Agent): AgentStatus => {
+const seededFallbackStatus = (agent: Agent): boolean => {
   const bucket = fnv1a(`${agent.id}:${agent.repoUrl}`) % 100;
-
-  // Well-established projects almost certainly remain reachable; never mark
-  // high-star tools OFFLINE based on a local connectivity problem.
-  if (agent.stars > 10000) return bucket < 97 ? 'LIVE' : 'UPDATE_AVAILABLE';
-  if (agent.stars > 1000) return bucket < 92 ? 'LIVE' : 'UPDATE_AVAILABLE';
-  if (bucket < 85) return 'LIVE';
-  if (bucket < 95) return 'UPDATE_AVAILABLE';
-  return 'OFFLINE';
+  if (agent.stars > 10000) return true;
+  if (agent.stars > 1000) return true;
+  if (bucket < 95) return true;
+  return false;
 };
 
 /**
  * Maps a successfully-fetched repository health probe to an AgentStatus.
  */
-const statusFromPushedAt = (pushedAt: string | undefined): AgentStatus => {
-  if (pushedAt) {
-    const pushedMs = Date.parse(pushedAt);
-    if (Number.isFinite(pushedMs) && Date.now() - pushedMs < UPDATE_WINDOW_MS) {
-      return 'UPDATE_AVAILABLE';
-    }
-  }
-  return 'LIVE';
+const statusFromPushedAt = (_pushedAt: string | undefined): boolean => {
+  return true;
 };
 
 /**
@@ -145,12 +134,12 @@ const probeUrlReachable = async (url: string): Promise<boolean> => {
 };
 
 // Deduplicates simultaneous refresh probes for the same repository.
-const inFlightProbes = new Map<string, Promise<AgentStatus>>();
+const inFlightProbes = new Map<string, Promise<boolean>>();
 
 /**
  * Performs the real (network-backed) status check for an agent.
  */
-const probeAgentStatus = async (agent: Agent): Promise<AgentStatus> => {
+const probeAgentStatus = async (agent: Agent): Promise<boolean> => {
   const repoUrl = sanitizeUrl(agent.repoUrl) || agent.repoUrl;
   const parsed = GitHubService.parseGitHubUrl(repoUrl);
 
@@ -160,7 +149,7 @@ const probeAgentStatus = async (agent: Agent): Promise<AgentStatus> => {
       case 'live':
         return statusFromPushedAt(health.pushedAt);
       case 'missing':
-        return 'OFFLINE';
+        return false;
       case 'unknown':
       default:
         return seededFallbackStatus(agent);
@@ -168,7 +157,7 @@ const probeAgentStatus = async (agent: Agent): Promise<AgentStatus> => {
   }
 
   const reachable = await probeUrlReachable(repoUrl);
-  return reachable ? 'LIVE' : seededFallbackStatus(agent);
+  return reachable ? true : seededFallbackStatus(agent);
 };
 
 export const RegistrySyncService = {
@@ -178,17 +167,17 @@ export const RegistrySyncService = {
    * freshest cached value and schedules a real network refresh when stale,
    * which the next tick picks up.
    */
-  checkStatus: (agent: Agent): AgentStatus => {
+  checkStatus: (agent: Agent): boolean => {
     const now = Date.now();
     const cacheKey = cacheKeyFor(agent);
     const cached = statusCache[cacheKey];
 
     if (isCacheEntryValid(cached)) {
-      return cached!.status;
+      return cached!.success;
     }
 
     if (now < circuitOpenUntil) {
-      return cached?.status || seededFallbackStatus(agent);
+      return cached?.success ?? seededFallbackStatus(agent);
     }
 
     // Kick off a real refresh in the background (deduplicated). The result is
@@ -197,7 +186,7 @@ export const RegistrySyncService = {
       if (rateLimiter.tryConsume()) {
         const probe = probeAgentStatus(agent)
           .then(status => {
-            statusCache[cacheKey] = { status, timestamp: Date.now() };
+            statusCache[cacheKey] = { success: status, timestamp: Date.now() };
             consecutiveFailures = 0;
             return status;
           })
@@ -211,7 +200,7 @@ export const RegistrySyncService = {
             if (consecutiveFailures >= MAX_FAILURES_BEFORE_BREAK) {
               circuitOpenUntil = Date.now() + CIRCUIT_OPEN_MS;
             }
-            return cached?.status || seededFallbackStatus(agent);
+            return cached?.success ?? seededFallbackStatus(agent);
           })
           .finally(() => {
             inFlightProbes.delete(cacheKey);
@@ -220,7 +209,7 @@ export const RegistrySyncService = {
       }
     }
 
-    return cached?.status || seededFallbackStatus(agent);
+    return cached?.success ?? seededFallbackStatus(agent);
   },
 
   /**
@@ -228,20 +217,20 @@ export const RegistrySyncService = {
    * Executes a real network probe (GitHub API / HEAD request) and only falls
    * back to the deterministic heuristic when the network is unreachable.
    */
-  syncAgent: async (agent: Agent, retryCount: number = 0): Promise<{ status: AgentStatus; timestamp: string }> => {
+  syncAgent: async (agent: Agent, retryCount: number = 0): Promise<{ success: boolean; timestamp: string }> => {
     const maxRetries = 3;
     const baseDelay = 1000; // 1 second
     const cacheKey = cacheKeyFor(agent);
 
     if (Date.now() < circuitOpenUntil) {
       return {
-        status: statusCache[cacheKey]?.status || seededFallbackStatus(agent),
+        success: statusCache[cacheKey]?.success || seededFallbackStatus(agent),
         timestamp: new Date().toISOString()
       };
     }
 
     try {
-      let status: AgentStatus;
+      let status: boolean;
 
       const inFlight = inFlightProbes.get(cacheKey);
       if (inFlight) {
@@ -250,7 +239,7 @@ export const RegistrySyncService = {
       } else {
         const probe = probeAgentStatus(agent)
           .then(probedStatus => {
-            statusCache[cacheKey] = { status: probedStatus, timestamp: Date.now() };
+            statusCache[cacheKey] = { success: probedStatus, timestamp: Date.now() };
             return probedStatus;
           })
           .finally(() => {
@@ -261,7 +250,7 @@ export const RegistrySyncService = {
       }
 
       consecutiveFailures = 0;
-      return { status, timestamp: new Date().toISOString() };
+      return { success: status, timestamp: new Date().toISOString() };
 
     } catch (error: unknown) {
       logger.error('Sync agent failed', {
@@ -284,7 +273,7 @@ export const RegistrySyncService = {
       // Max retries exceeded — deterministic degraded status instead of a
       // hard OFFLINE, since local connectivity is the likely culprit.
       return {
-        status: statusCache[cacheKey]?.status || seededFallbackStatus(agent),
+        success: statusCache[cacheKey]?.success || seededFallbackStatus(agent),
         timestamp: new Date().toISOString()
       };
     }
@@ -294,8 +283,8 @@ export const RegistrySyncService = {
    * Batch sync operation with concurrency control
    * Uses Promise.allSettled to prevent cascade failures
    */
-  syncMultipleAgents: async (agents: Agent[], maxConcurrency: number = 5): Promise<Map<string, AgentStatus>> => {
-    const results = new Map<string, AgentStatus>();
+  syncMultipleAgents: async (agents: Agent[], maxConcurrency: number = 5): Promise<Map<string, boolean>> => {
+    const results = new Map<string, boolean>();
 
     // Process in batches to respect rate limits
     for (let i = 0; i < agents.length; i += maxConcurrency) {
@@ -308,9 +297,9 @@ export const RegistrySyncService = {
       batch.forEach((agent, idx) => {
         const result = batchResults[idx];
         if (result && result.status === 'fulfilled') {
-          results.set(agent.id, result.value.status);
+          results.set(agent.id, result.value.success);
         } else if (result && result.status === 'rejected') {
-          results.set(agent.id, 'OFFLINE');
+          results.set(agent.id, false);
           logger.error('Batch sync failed', {
             agentName: agent.name,
             batchIndex: i,

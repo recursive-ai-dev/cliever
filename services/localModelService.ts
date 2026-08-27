@@ -1,10 +1,6 @@
 import { Agent, AgentCategory } from '../types';
 import { logger } from './logger';
 import { sanitizeChatMessage, sanitizeDisplayText } from '../utils/sanitization';
-import { UniversalLinguisticEngine } from '../model/lapoet-main/src/UniversalLinguisticEngine.js';
-import { getTrainedLaPoetHints } from './lapoetTrainedService';
-
-const engine = new UniversalLinguisticEngine();
 
 const clampStars = (stars: number | undefined): number => {
   if (typeof stars !== 'number' || !Number.isFinite(stars)) return 0;
@@ -575,10 +571,6 @@ export const askExpert = async (
 
   // Optional trained LaPoet layer (runtime-loaded checkpoint + CLI corpora from /public).
   // Must never break core chat.
-  const trainedHints = await getTrainedLaPoetHints(sanitized, ctx, options);
-
-  // Use the engine to analyze the query structure for validation
-  engine.analyze(sanitized.split(' ')[0] || 'query');
 
   // Match against knowledge base
   let responseSection = '';
@@ -594,9 +586,6 @@ export const askExpert = async (
 
   // Generate contextual guidance if no specific match
   if (!responseSection) {
-    // Use linguistic analysis for response generation
-    engine.generateStructure();
-
     responseSection = [
       '**General Guidance:**',
       '1. Start by reviewing the official documentation for the tool in question',
@@ -618,7 +607,6 @@ export const askExpert = async (
     `**Topic:** ${matchedTopic.charAt(0).toUpperCase() + matchedTopic.slice(1)}`,
     `**Query:** ${sanitized}`,
     '',
-    trainedHints ? `${trainedHints}\n\n---\n` : '',
     responseSection,
     '',
     '---',

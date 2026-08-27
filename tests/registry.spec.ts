@@ -90,7 +90,7 @@ test.describe('chat', () => {
     await input.fill('how do I install these tools?');
     await input.press('Enter');
     // User bubble visible
-    await expect(page.getByText('how do I install these tools?')).toBeVisible();
+    await expect(page.getByText('how do I install these tools?', { exact: true })).toBeVisible();
     // Local engine response arrives (Expert Analysis document)
     await expect(page.getByText(/Expert Analysis/i)).toBeVisible({ timeout: 15000 });
   });

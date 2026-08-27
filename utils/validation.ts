@@ -3,7 +3,7 @@
  * Provides runtime validation for all data structures with comprehensive error reporting
  */
 
-import { Agent, AgentCategory, AgentStatus, Review } from '../types';
+import { Agent, AgentCategory, Review } from '../types';
 import { logger } from '../services/logger';
 
 /**
@@ -181,19 +181,6 @@ const validateCategory = (value: unknown): ValidationResult => {
 };
 
 /**
- * Validates agent status
- */
-const validateStatus = (value: unknown): ValidationResult => {
-  if (value === undefined) return success(); // Optional field
-  
-  const validStatuses: AgentStatus[] = ['LIVE', 'SYNCING', 'UPDATE_AVAILABLE', 'OFFLINE'];
-  if (!validStatuses.includes(value as AgentStatus)) {
-    return failure([`status: invalid value "${value}"`]);
-  }
-  return success();
-};
-
-/**
  * Validates a complete Agent object
  */
 export const validateAgent = (agent: unknown): ValidationResult => {
@@ -240,8 +227,7 @@ export const validateAgent = (agent: unknown): ValidationResult => {
       validateReview,
       0,
       100
-    ),
-    validateStatus(a['status'])
+    )
   ];
   
   return mergeValidationResults(...results);
@@ -295,7 +281,6 @@ export const sanitizeAgent = (agent: Agent): Agent => {
     tags: (agent.tags || []).slice(0, 20),
     useCases: (agent.useCases || []).slice(0, 10),
     reviews: (agent.reviews || []).slice(0, 100),
-    status: agent.status || 'LIVE',
     lastSynced: agent.lastSynced || new Date().toISOString()
   };
 };

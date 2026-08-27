@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Agent } from '../types';
-import { Terminal, Star, Check, Plus, Minus, ArrowRightLeft, Activity, Github, Users, AlertTriangle } from 'lucide-react';
+import { Terminal, Star, Check, Plus, Minus, ArrowRightLeft, Github, Users, AlertTriangle } from 'lucide-react';
 import { suggestCopyCommand } from '../utils/command';
 import { copyText } from '../utils/clipboard';
 import { AnalyticsService, AnalyticsEventType } from '../services/analyticsService';
@@ -29,32 +29,6 @@ const AgentCard: React.FC<AgentCardProps> = React.memo(({ agent, onClick, isInSq
   }, [agent, platform]);
 
   const copyCommand = React.useMemo(() => suggestCopyCommand(installCommand), [installCommand]);
-
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'LIVE': return { color: 'var(--success)', bg: 'var(--success)', borderColor: 'var(--success)' };
-      case 'SYNCING': return { color: 'var(--accent)', bg: 'var(--accent)', borderColor: 'var(--accent)' };
-      case 'UPDATE_AVAILABLE': return { color: 'var(--warning)', bg: 'var(--warning)', borderColor: 'var(--warning)' };
-      default: return { color: 'var(--text-muted)', bg: 'var(--text-muted)', borderColor: 'var(--text-muted)' };
-    }
-  };
-
-  const statusStyle = getStatusStyle(agent.status || 'LIVE');
-
-  const getVerificationStyle = (status: Agent['verificationStatus']) => {
-    switch (status) {
-      case 'VERIFIED':
-        return { color: 'var(--success)', label: 'VERIFIED' };
-      case 'DEGRADED':
-        return { color: 'var(--warning)', label: 'DEGRADED' };
-      case 'FAILED':
-        return { color: 'var(--error)', label: 'FAILED' };
-      default:
-        return { color: 'var(--text-muted)', label: 'UNVERIFIED' };
-    }
-  };
-
-  const verificationStyle = getVerificationStyle(agent.verificationStatus);
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -86,23 +60,9 @@ const AgentCard: React.FC<AgentCardProps> = React.memo(({ agent, onClick, isInSq
       }}
     >
       {/* HUD Bar */}
-      <div className="px-4 py-2 flex justify-between items-center"
+      <div className="px-4 py-2 flex justify-end items-center"
         style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--glass)' }}>
-        <div className={`flex items-center gap-2 px-2 py-0.5 rounded text-[9px] font-mono font-bold tracking-widest ${agent.status === 'SYNCING' ? 'animate-pulse' : ''}`}
-          style={{
-            color: statusStyle.color,
-            backgroundColor: `color-mix(in srgb, ${statusStyle.bg} 10%, transparent)`,
-            border: `1px solid color-mix(in srgb, ${statusStyle.borderColor} 20%, transparent)`
-          }}>
-          <Activity size={10} />
-          {agent.status || 'LIVE'}
-        </div>
         <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-          <div
-            title={`Verification: ${verificationStyle.label}${agent.lastVerified ? ` (last: ${agent.lastVerified.slice(0, 10)})` : ''}`}
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: verificationStyle.color, boxShadow: `0 0 10px color-mix(in srgb, ${verificationStyle.color} 35%, transparent)` }}
-          />
           <Star size={12} style={{ color: 'var(--warning)' }} />
           {agent.stars.toLocaleString()}
         </div>

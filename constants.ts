@@ -91,6 +91,8 @@ export const TAG_DESCRIPTIONS: Record<string, string> = {
   'disk-usage': 'Analyzes disk space consumption.'
 };
 
+export const REGISTRY_LAST_UPDATED = new Date().toISOString();
+
 export const AGENTS: Agent[] = [
   // --- 2.0 AI-ENHANCED TERMINAL EMULATORS ---
   {
@@ -250,28 +252,6 @@ export const AGENTS: Agent[] = [
     useCases: ['Safe execution of untrusted scripts.', 'Sandboxed feature building.', 'Security analysis of code.'],
     reviews: [],
     version: 'v0.15.2'
-  },
-  {
-    id: 'gh-copilot',
-    name: 'GitHub Copilot Agent',
-    description: 'Autonomous workspace partner within the GitHub ecosystem.',
-    longDescription: 'The Agent mode in GitHub Copilot autonomously finds context across workspaces, edits multiple files, and runs terminal commands to completion.',
-    category: AgentCategory.CODING,
-    stars: 15000,
-    language: 'Go',
-    installCommand: 'npm install -g @github/copilot',
-    platformCommands: {
-      default: 'npm install -g @github/copilot',
-      windows: 'winget install GitHub.Copilot',
-      macos: 'brew install --cask copilot-cli',
-      notes: 'GitHub deprecated the old `gh extension install github/gh-copilot` in favor of this standalone agentic CLI (Jan 2026). Needs active Copilot subscription.'
-    },
-    repoUrl: 'https://github.com/github/copilot-cli',
-    features: ['Agent Mode Activation', 'Official Workspace Indexing', 'Multi-file Edits'],
-    tags: ['github', 'official', 'productivity'],
-    useCases: ['Automating PR reviews.', 'Complex workspace navigation.', 'Iterative feature development.'],
-    reviews: [],
-    version: 'v1.2.0'
   },
   {
     id: 'amazon-q',
@@ -664,27 +644,6 @@ export const AGENTS: Agent[] = [
     useCases: ['Rapid project bootstrapping.', 'Spec-driven prototypes.', 'Iterative codebase generation.'],
     reviews: [],
     version: 'v0.3.1'
-  },
-  {
-    id: 'gptscript',
-    name: 'GPTScript',
-    description: 'Natural language programming runtime with a CLI-first workflow.',
-    longDescription: 'Defines tasks as scripts, executes tool-backed steps, and composes reusable task graphs with CLI automation.',
-    category: AgentCategory.FRAMEWORK,
-    stars: 8700,
-    language: 'Go',
-    installCommand: 'brew install gptscript',
-    platformCommands: {
-      default: 'brew install gptscript',
-      windows: 'winget install gptscript-ai.gptscript',
-      notes: 'Create .gpt files with natural language tasks. Run with "gptscript <file>.gpt". Note: the gptscript-ai GitHub org was archived in 2026 and get.gptscript.ai no longer resolves — install via brew/winget or a release binary instead of the old curl script.'
-    },
-    repoUrl: 'https://github.com/gptscript-ai/gptscript',
-    features: ['Scripted agents', 'Tool orchestration', 'Reusable workflows'],
-    tags: ['framework', 'automation', 'prompts'],
-    useCases: ['Composable automation scripts.', 'Reusable agent workflows.', 'Multi-step CLI pipelines.'],
-    reviews: [],
-    version: 'v0.5.5'
   },
   {
     id: 'fabric',
@@ -1530,29 +1489,6 @@ export const AGENTS: Agent[] = [
     useCases: ['Checking disk space.', 'Monitoring mounted devices.', 'System administration.'],
     reviews: [],
     version: 'v0.8.1'
-  },
-  {
-    id: 'tldr',
-    name: 'tldr',
-    description: 'Simplified and community-driven man pages.',
-    longDescription: 'tldr provides simplified, practical examples for command-line tools. Instead of reading long man pages, get practical examples in seconds.',
-    category: AgentCategory.SHELL_UTILITY,
-    stars: 52000,
-    language: 'Multiple',
-    installCommand: 'npm install -g tldr',
-    platformCommands: {
-      default: 'npm install -g tldr',
-      linux: 'pip install tldr',
-      macos: 'brew install tlrc',
-      windows: 'npm install -g tldr',
-      notes: 'Run `tldr <command>` to get quick examples. Update cache with `tldr --update`. Homebrew formula `tldr` is deprecated; use `tlrc` (the Rust client) on macOS instead.'
-    },
-    repoUrl: 'https://github.com/tldr-pages/tldr',
-    features: ['Practical examples', 'Community maintained', 'Offline mode', 'Multi-language'],
-    tags: ['terminal', 'productivity', 'documentation', 'open-source'],
-    useCases: ['Quick command reference.', 'Learning CLI tools.', 'Faster than man pages.'],
-    reviews: [],
-    version: 'v2.2.0'
   },
   {
     id: 'thefuck',

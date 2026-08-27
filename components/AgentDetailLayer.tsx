@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Agent, ChatMessage, Review } from '../types';
-import { X, Copy, Check, Cpu, Github, Zap, Star, MessageCircle, Code, Shield, Twitter, Linkedin, Monitor, Apple, Terminal, AlertCircle, MessageSquare, Trash2, Wrench, FileText } from 'lucide-react';
-import { analyzeAgent, askExpert, diagnoseInstallError, getInstallationGuide } from '../services/localModelService';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Agent, Review } from '../types';
+import { X, Copy, Check, Cpu, Github, Zap, Star, MessageCircle, Code, Shield, Twitter, Linkedin, Monitor, Apple, Terminal, AlertCircle, Trash2, Wrench, FileText } from 'lucide-react';
+import { analyzeAgent, diagnoseInstallError, getInstallationGuide } from '../services/localModelService';
 import { VerificationService } from '../services/verificationService';
 import { AnalyticsService, AnalyticsEventType } from '../services/analyticsService';
 import SimpleTooltip from './SimpleTooltip';
@@ -9,7 +9,7 @@ import { suggestCopyCommand } from '../utils/command';
 import { copyText } from '../utils/clipboard';
 import MarkdownText from '../utils/markdown';
 import { TAG_DESCRIPTIONS } from '../constants';
-import { getErrorMessage, sanitizeChatMessage, sanitizeDisplayText } from '../utils/sanitization';
+import { sanitizeDisplayText } from '../utils/sanitization';
 
 interface AgentDetailLayerProps {
     agent: Agent | null;
@@ -37,16 +37,6 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
     const [analysis, setAnalysis] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
-
-    // LaPoet Chat (agent-scoped)
-    const [lapoetChatOpen, setLapoetChatOpen] = useState(false);
-    const [lapoetChatInput, setLapoetChatInput] = useState('');
-    const [lapoetChatLoading, setLapoetChatLoading] = useState(false);
-    const [lapoetChatHistory, setLapoetChatHistory] = useState<ChatMessage[]>([
-        { role: 'model', text: 'LaPoet ready. Ask about installation, tradeoffs, or workflow fit.' }
-    ]);
-    const lapoetChatRequestIdRef = useRef<number>(0);
-    const lapoetChatAbortRef = useRef<AbortController | null>(null);
 
     const [verifying, setVerifying] = useState(false);
     const [verifyCopied, setVerifyCopied] = useState(false);
@@ -166,7 +156,6 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                 version: agent.version
             },
             verification: {
-                verificationStatus: agent.verificationStatus ?? 'UNVERIFIED',
                 lastVerified: agent.lastVerified ?? null,
                 starsSource: agent.starsSource ?? 'REGISTRY',
                 repoUpdatedAt: agent.repoUpdatedAt ?? null,
@@ -179,12 +168,6 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
         setTimeout(() => setExportCopied(false), 2000);
     };
 
-    const verificationColor = (status: Agent['verificationStatus']): string => {
-        if (status === 'VERIFIED') return 'var(--success)';
-        if (status === 'DEGRADED') return 'var(--warning)';
-        if (status === 'FAILED') return 'var(--error)';
-        return 'var(--text-muted)';
-    };
 
     const handleAnalysis = async () => {
         if (loading) return;
@@ -192,72 +175,6 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
         const result = await analyzeAgent(agent);
         setAnalysis(result);
         setLoading(false);
-    };
-
-    const buildAgentChatContext = (a: Agent): string => {
-        const tags = a.tags?.length ? a.tags.join(', ') : 'none';
-        const topFeatures = a.features?.slice(0, 5).join(', ') || 'none';
-        const topUseCases = a.useCases?.slice(0, 5).join(' | ') || 'none';
-
-        return [
-            `Agent: ${a.name}`,
-            `Category: ${a.category}`,
-            `Language: ${a.language}`,
-            `Stars: ${a.stars}`,
-            `Repo: ${a.repoUrl}`,
-            `Install: ${a.installCommand}`,
-            `Tags: ${tags}`,
-            `Top features: ${topFeatures}`,
-            `Top use cases: ${topUseCases}`
-        ].join('\n');
-    };
-
-    const handleLapoetChatSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (lapoetChatLoading) return;
-        if (!lapoetChatInput.trim()) return;
-
-        const sanitizedInput = sanitizeChatMessage(lapoetChatInput);
-        const requestId = Date.now();
-        lapoetChatRequestIdRef.current = requestId;
-
-        // Abort any in-flight request (agent panel chat only)
-        if (lapoetChatAbortRef.current) {
-            lapoetChatAbortRef.current.abort('replaced');
-        }
-        const controller = new AbortController();
-        lapoetChatAbortRef.current = controller;
-
-        setLapoetChatHistory(prev => [...prev, { role: 'user', text: sanitizedInput }]);
-        setLapoetChatInput('');
-        setLapoetChatLoading(true);
-
-        const context = buildAgentChatContext(agent);
-
-        try {
-            const response = await askExpert(sanitizedInput, context, { signal: controller.signal });
-            const isLatest = lapoetChatRequestIdRef.current === requestId;
-            if (isLatest) {
-                setLapoetChatHistory(prev => [...prev, { role: 'model', text: response }]);
-            }
-        } catch (error: unknown) {
-            const isLatest = lapoetChatRequestIdRef.current === requestId;
-            if (!isLatest) return;
-
-            if ((error as Error)?.name === 'AbortError') {
-                setLapoetChatHistory(prev => [...prev, { role: 'model', text: 'Request cancelled. You can retry.' }]);
-                return;
-            }
-
-            setLapoetChatHistory(prev => [
-                ...prev,
-                { role: 'model', text: `Error: ${getErrorMessage(error)}` }
-            ]);
-        } finally {
-            if (lapoetChatRequestIdRef.current === requestId) {
-                setLapoetChatLoading(false);
-            }
-        }
     };
 
     const handleShare = (platform: 'twitter' | 'linkedin') => {
@@ -401,12 +318,6 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                                 <div>
                                     <div style={{ color: 'var(--text-muted)' }}>Source</div>
                                     <div style={{ color: 'var(--text-primary)' }}>Registry entry (local)</div>
-                                </div>
-                                <div>
-                                    <div style={{ color: 'var(--text-muted)' }}>Status</div>
-                                    <div className="font-mono" style={{ color: verificationColor(agent.verificationStatus) }}>
-                                        {agent.verificationStatus || 'UNVERIFIED'}
-                                    </div>
                                 </div>
                                 <div>
                                     <div style={{ color: 'var(--text-muted)' }}>Stars Source</div>
@@ -674,68 +585,6 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                             )}
                         </div>
 
-                        {/* LaPoet Chat Section */}
-                        <div className="pt-6" style={{ borderTop: '1px solid var(--border)' }}>
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xs font-mono uppercase tracking-wider flex items-center gap-2" style={{ color: 'var(--accent)' }}>
-                                    <MessageSquare size={14} /> LaPoet Chat
-                                </h3>
-                                <button
-                                    onClick={() => setLapoetChatOpen(v => !v)}
-                                    className="text-[10px] uppercase px-3 py-1.5 rounded transition-colors"
-                                    style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
-                                >
-                                    {lapoetChatOpen ? 'Hide' : 'Open'}
-                                </button>
-                            </div>
-
-                            {lapoetChatOpen && (
-                                <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)', backgroundColor: 'var(--bg-tertiary)' }}>
-                                    <div className="max-h-64 overflow-y-auto p-3 space-y-3 font-mono text-xs" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                                        {lapoetChatHistory.map((msg, idx) => (
-                                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                                <div
-                                                    className="max-w-[90%] rounded-lg p-3 whitespace-pre-wrap"
-                                                    style={msg.role === 'user'
-                                                        ? { backgroundColor: 'var(--accent-glow)', color: 'var(--accent)', border: '1px solid var(--accent)' }
-                                                        : { backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }
-                                                    }
-                                                >
-                                                    {msg.text}
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {lapoetChatLoading && (
-                                            <div className="animate-pulse" style={{ color: 'var(--accent)' }}>
-                                                &gt; ANALYZING...
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <form onSubmit={handleLapoetChatSubmit} className="p-3" style={{ borderTop: '1px solid var(--border)' }}>
-                                        <div className="flex gap-2">
-                                            <input
-                                                className="flex-1 rounded-lg px-3 py-2 text-xs focus:outline-none font-mono"
-                                                style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                                                placeholder="Ask LaPoet about this tool..."
-                                                aria-label="Ask the local engine about this tool"
-                                                value={lapoetChatInput}
-                                                onChange={(e) => setLapoetChatInput(sanitizeChatMessage(e.target.value))}
-                                                disabled={lapoetChatLoading}
-                                            />
-                                            <button
-                                                type="submit"
-                                                disabled={lapoetChatLoading || !lapoetChatInput.trim()}
-                                                className="px-3 rounded-lg text-[10px] font-bold uppercase transition-all disabled:opacity-30"
-                                                style={{ backgroundColor: 'var(--accent)', color: 'var(--bg-primary)' }}
-                                            >
-                                                Send
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            )}
-                        </div>
                     </div>
 
                     {/* Right Column: Reviews */}
