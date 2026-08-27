@@ -27,9 +27,9 @@ export enum AgentCategory {
   THEMING = 'Theming/Customization'
 }
 
-export type AgentStatus = 'LIVE' | 'SYNCING' | 'UPDATE_AVAILABLE' | 'OFFLINE';
 
-export type AgentVerificationStatus = 'UNVERIFIED' | 'VERIFIED' | 'DEGRADED' | 'FAILED';
+
+
 
 export type StarsSource = 'REGISTRY' | 'GITHUB_API' | 'UNKNOWN';
 
@@ -78,7 +78,6 @@ export interface Agent {
   useCases: string[];
   reviews: Review[];
   isNew?: boolean;
-  status?: AgentStatus;
   lastSynced?: string;
   version?: string;
   /** Troubleshooting tips for common installation issues */
@@ -88,7 +87,6 @@ export interface Agent {
    * Trust & authority (optional): populated via local verification.
    * Stored locally; never fabricated.
    */
-  verificationStatus?: AgentVerificationStatus;
   lastVerified?: string;
   starsSource?: StarsSource;
   repoUpdatedAt?: string;

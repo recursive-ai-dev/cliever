@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { AGENTS } from './constants';
-import { Agent, AgentCategory, Review, ChatMessage, AgentStatus } from './types';
+import { Agent, AgentCategory, Review, ChatMessage } from './types';
 import TerminalHero from './components/TerminalHero';
 import AgentCard from './components/AgentCard';
 import AgentDetailLayer from './components/AgentDetailLayer';
@@ -84,7 +84,6 @@ const initializeAgentVerification = (agent: Agent): Agent => {
   if (!rec) return agent;
   return {
     ...agent,
-    verificationStatus: rec.verificationStatus,
     lastVerified: rec.lastVerified,
     starsSource: rec.starsSource,
     repoUpdatedAt: rec.repoUpdatedAt,
@@ -103,7 +102,6 @@ const App: React.FC = () => {
     BOOT_REGISTRY.map(a => {
       const withRuntime = {
         ...a,
-        status: 'LIVE' as AgentStatus,
         lastSynced: new Date().toISOString()
       };
       return initializeAgentVerification(initializeAgentReviews(withRuntime));
@@ -314,13 +312,6 @@ const App: React.FC = () => {
         case 'Stars (Low-High)': return a.stars - b.stars;
         case 'Name (A-Z)': return a.name.localeCompare(b.name);
         case 'Name (Z-A)': return b.name.localeCompare(a.name);
-        case 'Verified (First)': {
-          const rank = (s: Agent['verificationStatus']): number =>
-            s === 'VERIFIED' ? 3 : s === 'DEGRADED' ? 2 : s === 'UNVERIFIED' ? 1 : 0;
-          const diff = rank(b.verificationStatus) - rank(a.verificationStatus);
-          if (diff !== 0) return diff;
-          return b.stars - a.stars;
-        }
         default: return 0;
       }
     });
@@ -370,12 +361,12 @@ const App: React.FC = () => {
     const interval = setInterval(() => {
       setAgents(prev => prev.map(a => ({
         ...a,
-        status: RegistrySyncService.checkStatus(a)
+        isActive: RegistrySyncService.checkStatus(a)
       })));
       // Keep selectedAgent status in sync with the background refresh
       setSelectedAgent(prev => {
         if (!prev) return prev;
-        return { ...prev, status: RegistrySyncService.checkStatus(prev) };
+        return { ...prev, isActive: RegistrySyncService.checkStatus(prev) };
       });
     }, 30000); // Check status every 30s
     return () => clearInterval(interval);
@@ -400,15 +391,14 @@ const App: React.FC = () => {
     setChatHistory(prev => [...prev, { role: 'model', text: '> PULLING LATEST METADATA FROM REGISTRY NODES...' }]);
 
     // Logic: Force all visible agents into SYNCING state
-    setAgents(prev => prev.map(a => ({ ...a, status: 'SYNCING' })));
+// Sync UI indicator can be handled without mutating agent properties or left out.
 
     // Use production-grade batch sync service
     try {
-      const syncResults = await RegistrySyncService.syncMultipleAgents(agents, 5);
+      await RegistrySyncService.syncMultipleAgents(agents, 5);
 
       setAgents(prev => prev.map(a => ({
         ...a,
-        status: syncResults.get(a.id) || 'LIVE',
         lastSynced: new Date().toISOString()
       })));
 
@@ -417,13 +407,12 @@ const App: React.FC = () => {
         if (!prev) return prev;
         return {
           ...prev,
-          status: syncResults.get(prev.id) || 'LIVE',
           lastSynced: new Date().toISOString()
         };
       });
 
       setLastGlobalSync(new Date().toLocaleTimeString());
-      setChatHistory(prev => [...prev, { role: 'model', text: `> REGISTRY SYNCHRONIZED. ${syncResults.size}/${agents.length} NODES VERIFIED. INTEGRITY 100%.` }]);
+      setChatHistory(prev => [...prev, { role: 'model', text: `> REGISTRY SYNCHRONIZED.` }]);
     } catch (error) {
       console.error('Sync failed:', error);
       setChatHistory(prev => [...prev, { role: 'model', text: '> SYNC ERROR. FALLING BACK TO CACHED DATA.' }]);
@@ -431,10 +420,9 @@ const App: React.FC = () => {
       // Fallback to cached/live status
       setAgents(prev => prev.map(a => ({
         ...a,
-        status: 'LIVE' as AgentStatus,
         lastSynced: new Date().toISOString()
       })));
-      setSelectedAgent(prev => prev ? { ...prev, status: 'LIVE' as AgentStatus, lastSynced: new Date().toISOString() } : prev);
+      setSelectedAgent(prev => prev ? { ...prev, lastSynced: new Date().toISOString() } : prev);
     } finally {
       setIsGlobalSyncing(false);
     }

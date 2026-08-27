@@ -3,7 +3,7 @@
  * Implements type-safe persistence with validation, versioning, and migration support
  */
 
-import { AgentVerificationStatus, Review, StarsSource } from '../types';
+import { Review, StarsSource } from '../types';
 import { logger } from './logger';
 import { sanitizeDisplayText, getErrorMessage } from '../utils/sanitization';
 
@@ -24,7 +24,6 @@ export enum StorageKey {
 }
 
 export interface AgentVerificationRecord {
-  verificationStatus: AgentVerificationStatus;
   lastVerified: string;
   starsSource: StarsSource;
   repoUpdatedAt?: string;
@@ -92,15 +91,12 @@ const validateReview = (review: unknown): review is Review => {
 const validateVerificationRecord = (rec: unknown): rec is AgentVerificationRecord => {
   if (!rec || typeof rec !== 'object') return false;
   const r = rec as Record<string, unknown>;
-  const status = r['verificationStatus'];
   const starsSource = r['starsSource'];
 
-  const validStatus: AgentVerificationStatus[] = ['UNVERIFIED', 'VERIFIED', 'DEGRADED', 'FAILED'];
   const validStars: StarsSource[] = ['REGISTRY', 'GITHUB_API', 'UNKNOWN'];
 
   return (
     typeof r['lastVerified'] === 'string' &&
-    validStatus.includes(status as AgentVerificationStatus) &&
     validStars.includes(starsSource as StarsSource) &&
     Array.isArray(r['verificationNotes'])
   );
