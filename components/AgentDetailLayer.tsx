@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Agent, ChatMessage, Review } from '../types';
-import { X, Copy, Check, Cpu, Github, Zap, Star, MessageCircle, Code, Shield, Twitter, Linkedin, Monitor, Apple, Terminal, AlertCircle, MessageSquare, Trash2, Wrench, FileText } from 'lucide-react';
+import { X, Copy, Check, Cpu, Github, Globe, Zap, Star, MessageCircle, Code, Shield, Twitter, Linkedin, Monitor, Apple, Terminal, AlertCircle, MessageSquare, Trash2, Wrench, FileText, Archive } from 'lucide-react';
 import { analyzeAgent, askExpert, diagnoseInstallError, getInstallationGuide } from '../services/localModelService';
 import { VerificationService } from '../services/verificationService';
 import { AnalyticsService, AnalyticsEventType } from '../services/analyticsService';
 import SimpleTooltip from './SimpleTooltip';
-import { suggestCopyCommand } from '../utils/command';
+import { getCopyCommand, isExecutableCommand } from '../utils/command';
+import { formatStars, isGitHubRepoUrl, starsTooltip } from '../utils/format';
 import { copyText } from '../utils/clipboard';
 import MarkdownText from '../utils/markdown';
 import { TAG_DESCRIPTIONS } from '../constants';
@@ -104,11 +105,12 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
     };
 
     const currentCommand = getInstallCommand();
-    const displayCommand = suggestCopyCommand(currentCommand);
+    const displayCommand = getCopyCommand(currentCommand);
+    const isManualStep = !isExecutableCommand(displayCommand);
+    const hasGitHubRepo = isGitHubRepoUrl(agent.repoUrl);
 
     const handleCopy = () => {
-        const toCopy = suggestCopyCommand(currentCommand);
-        copyText(toCopy).then((ok) => {
+        copyText(displayCommand).then((ok) => {
             setCopyState(ok ? 'copied' : 'failed');
             setTimeout(() => setCopyState('idle'), 2000);
             if (ok) {
@@ -271,7 +273,7 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
             shareUrl = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text + ' ' + url)}`;
         }
 
-        window.open(shareUrl, '_blank', 'width=600,height=400');
+        window.open(shareUrl, '_blank', 'noopener,noreferrer,width=600,height=400');
     };
 
     const handleSubmitReview = (e: React.FormEvent) => {
@@ -333,6 +335,7 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                             className="p-2 rounded-full transition-colors"
                             style={{ color: 'var(--text-secondary)' }}
                             title="Share on Twitter"
+                            aria-label={`Share ${agent.name} on Twitter`}
                         >
                             <Twitter size={20} />
                         </button>
@@ -341,11 +344,12 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                             className="p-2 rounded-full transition-colors"
                             style={{ color: 'var(--text-secondary)' }}
                             title="Share on LinkedIn"
+                            aria-label={`Share ${agent.name} on LinkedIn`}
                         >
                             <Linkedin size={20} />
                         </button>
                         <div className="h-6 w-[1px] mx-2" style={{ backgroundColor: 'var(--border)' }}></div>
-                        <button onClick={onClose} className="p-2 rounded-full transition-colors" style={{ color: 'var(--text-secondary)' }}>
+                        <button onClick={onClose} className="p-2 rounded-full transition-colors" style={{ color: 'var(--text-secondary)' }} aria-label="Close details" title="Close (Esc)">
                             <X size={24} />
                         </button>
                     </div>
@@ -356,6 +360,18 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
 
                     {/* Left Column: Details */}
                     <div className="flex-1 p-6 space-y-8" style={{ backgroundColor: 'var(--bg-primary)', borderRight: '1px solid var(--border)' }}>
+
+                        {agent.archived && (
+                            <div className="flex items-start gap-3 p-3 rounded-lg text-sm"
+                                role="note"
+                                style={{ backgroundColor: 'color-mix(in srgb, var(--warning) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)', color: 'var(--text-primary)' }}>
+                                <Archive size={16} className="mt-0.5 shrink-0" style={{ color: 'var(--warning)' }} aria-hidden="true" />
+                                <span>
+                                    <strong style={{ color: 'var(--warning)' }}>Archived upstream.</strong>{' '}
+                                    This project is no longer maintained. It may still install, but expect no fixes or security updates.
+                                </span>
+                            </div>
+                        )}
 
                         {/* Description */}
                         <div>
@@ -374,9 +390,9 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                                 </div>
                             </div>
                             <div className="p-3 rounded" style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}>
-                                <span className="text-xs block mb-1" style={{ color: 'var(--text-muted)' }}>GitHub Stars</span>
-                                <div className="font-mono flex items-center gap-2" style={{ color: 'var(--warning)' }}>
-                                    <Star size={14} /> {(agent.stars / 1000).toFixed(1)}k
+                                <span className="text-xs block mb-1" style={{ color: 'var(--text-muted)' }}>{hasGitHubRepo ? 'GitHub Stars' : 'Stars'}</span>
+                                <div className="font-mono flex items-center gap-2" style={{ color: 'var(--warning)' }} title={starsTooltip(agent.stars, agent.repoUrl)}>
+                                    <Star size={14} aria-hidden="true" /> {formatStars(agent.stars)}
                                 </div>
                             </div>
                         </div>
@@ -573,7 +589,7 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                                         {copied ? <Check size={16} style={{ color: 'var(--success)' }} /> : copyState === 'failed' ? <AlertCircle size={16} style={{ color: 'var(--error)' }} /> : <Copy size={16} />}
                                     </button>
                                 </div>
-                                <span style={{ color: 'var(--accent)' }} className="select-none">{selectedPlatform === 'windows' ? '> ' : '$ '}</span>
+                                <span style={{ color: 'var(--accent)' }} className="select-none" aria-hidden="true">{isManualStep ? '# ' : selectedPlatform === 'windows' ? '> ' : '$ '}</span>
                                 <span className="break-all" style={{ color: 'var(--text-secondary)' }}>{displayCommand}</span>
                             </div>
 
@@ -856,12 +872,12 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                     <a
                         href={agent.repoUrl}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-medium transition-colors"
                         style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
                     >
-                        <Github size={18} />
-                        Access Repository
+                        {hasGitHubRepo ? <Github size={18} aria-hidden="true" /> : <Globe size={18} aria-hidden="true" />}
+                        {hasGitHubRepo ? 'Access Repository' : 'Visit Website'}
                     </a>
                     <button
                         onClick={() => onCompare(agent)}

@@ -21,10 +21,11 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('registry discovery', () => {
   test('grid renders agents after platform selection', async ({ page }) => {
-    // Default page shows 6 agent cards (itemsPerPage = 6)
+    // Default page shows 12 agent cards (itemsPerPage = 12)
     const cards = page.locator('main .grid h3');
     await expect(cards.first()).toBeVisible();
-    expect(await cards.count()).toBe(6);
+    expect(await cards.count()).toBe(12);
+    await expect(page.getByText(/^Showing 1–12 of \d+ tools$/)).toBeVisible();
   });
 
   test('search filters the grid', async ({ page }) => {
@@ -42,7 +43,35 @@ test.describe('registry discovery', () => {
     await expect(cards.first()).toBeVisible();
     const all = page.getByRole('button', { name: 'ALL', exact: true });
     await all.click();
-    expect(await cards.count()).toBe(6);
+    expect(await cards.count()).toBe(12);
+  });
+
+  test('empty search shows an empty state that clears filters', async ({ page }) => {
+    const search = page.getByPlaceholder('SEARCH_REGISTRY_METADATA...');
+    await search.fill('zzzz-no-such-tool');
+    await expect(page.getByText('No tools match your filters.')).toBeVisible();
+    await page.getByRole('button', { name: 'Clear filters' }).last().click();
+    await expect(search).toHaveValue('');
+    expect(await page.locator('main .grid h3').count()).toBe(12);
+  });
+
+  test('"/" focuses the registry search', async ({ page }) => {
+    await page.locator('body').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('/');
+    await expect(page.getByPlaceholder('SEARCH_REGISTRY_METADATA...')).toBeFocused();
+  });
+
+  test('cards open with the keyboard', async ({ page }) => {
+    const first = page.locator('main .grid h3 button').first();
+    await first.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Mission Profile')).toBeVisible();
+  });
+
+  test('archived upstream projects are flagged', async ({ page }) => {
+    await page.getByPlaceholder('SEARCH_REGISTRY_METADATA...').fill('gpt-engineer');
+    const card = page.locator('main .grid > div').filter({ hasText: 'gpt-engineer' }).first();
+    await expect(card.getByText('ARCHIVED')).toBeVisible();
   });
 
   test('pagination advances and retreats', async ({ page }) => {
@@ -51,6 +80,28 @@ test.describe('registry discovery', () => {
     await expect(page.getByRole('button', { name: 'Previous page' })).toBeEnabled();
     await page.getByRole('button', { name: 'Previous page' }).click();
     await expect(page.getByRole('button', { name: 'Previous page' })).toBeDisabled();
+  });
+});
+
+test.describe('install commands', () => {
+  test('copy button copies the stored command exactly', async ({ page, context, browserName }) => {
+    test.skip(browserName !== 'chromium', 'Clipboard read permission is Chromium-only in Playwright');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.getByPlaceholder('SEARCH_REGISTRY_METADATA...').fill('claude code');
+    await page.getByRole('button', { name: 'Copy install command for Claude Code' }).click();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toBe('curl -fsSL https://claude.ai/install.sh | bash');
+  });
+
+  test('bundle comments out manual (non-command) steps', async ({ page }) => {
+    // Jan's Linux entry is a manual download step, not a shell command.
+    await page.getByPlaceholder('SEARCH_REGISTRY_METADATA...').fill('jan');
+    const card = page.locator('main .grid > div').filter({ has: page.getByRole('button', { name: 'View details for Jan' }) });
+    await card.getByRole('button', { name: 'Add to bundle' }).click();
+    await page.getByRole('button', { name: 'Take bundle' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Take bundle' });
+    await dialog.getByRole('button', { name: /Linux/ }).click();
+    await expect(dialog.getByText(/# Manual step: Download AppImage from jan\.ai/)).toBeVisible();
   });
 });
 

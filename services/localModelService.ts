@@ -64,7 +64,9 @@ export const analyzeAgent = async (agent: Agent): Promise<string> => {
       '',
       `**Installation:** \`${agent.installCommand}\``,
       `**Repository:** ${agent.repoUrl}`,
-      `**Community:** ${clampStars(agent.stars).toLocaleString()} stars`
+      clampStars(agent.stars) > 0
+        ? `**Community:** ${clampStars(agent.stars).toLocaleString()} stars`
+        : '**Community:** No public repository star count (closed source or hosted elsewhere)'
     ].join('\n\n');
   } catch (error) {
     logger.error('Local analysis failed', { error });
@@ -172,7 +174,9 @@ export const compareAgents = async (
   const starsA = clampStars(agentA.stars);
   const starsB = clampStars(agentB.stars);
   const starDiff = Math.abs(starsA - starsB);
-  const popularityAnalysis = starsA === starsB
+  const popularityAnalysis = starsA === 0 || starsB === 0
+    ? 'Star counts are not directly comparable here because at least one tool has no public repository. Choose based on technical requirements.'
+    : starsA === starsB
     ? 'Both have equal community adoption. Choose based on technical requirements.'
     : starsA > starsB
       ? `${agentA.name} has ${starDiff.toLocaleString()} more stars, indicating stronger community adoption.`
@@ -217,7 +221,7 @@ export const compareAgents = async (
     `| Name | ${safeText(agentA.name)} | ${safeText(agentB.name)} |`,
     `| Category | ${agentA.category} | ${agentB.category} |`,
     `| Language | ${agentA.language} | ${agentB.language} |`,
-    `| Stars | ${starsA.toLocaleString()} | ${starsB.toLocaleString()} |`,
+    `| Stars | ${starsA > 0 ? starsA.toLocaleString() : '—'} | ${starsB > 0 ? starsB.toLocaleString() : '—'} |`,
     `| Top Features | ${featuresA} | ${featuresB} |`,
     `| Install | ${safeText(agentA.installCommand)} | ${safeText(agentB.installCommand)} |`,
     '',

@@ -15,6 +15,9 @@ const isWindowsCompatibleCommand = (cmd: string): boolean => {
     if (lower.includes('yum ')) return false;
     if (lower.includes('apk ')) return false;
     if (lower.includes('.sh') && !lower.includes('curl') && !lower.includes('wget')) return false; // simple scripts often bash
+    if (/\|\s*(?:sudo\s+)?(?:ba|z)?sh\b/.test(lower)) return false; // curl … | bash installers need a POSIX shell
+    if (/^sh -c /.test(lower)) return false;
+    if (/\bchmod\b/.test(lower)) return false;
     return true;
 };
 
@@ -31,6 +34,17 @@ const isUnixCompatibleCommand = (cmd: string): boolean => {
     return true;
 };
 
+/** Linux distro package managers that do not exist on macOS. */
+const isLinuxOnlyCommand = (cmd: string): boolean =>
+    /(?:^|[\s;&|])(?:sudo\s+)?(?:apt|apt-get|dnf|yum|pacman|zypper|apk|snap|yay)\s/.test(cmd.toLowerCase());
+
+/** Whether a single command string can plausibly run as-is on the platform. */
+export const isCommandCompatible = (cmd: string, platform: Platform): boolean => {
+    if (platform === 'windows') return isWindowsCompatibleCommand(cmd);
+    if (platform === 'macos' && isLinuxOnlyCommand(cmd)) return false;
+    return isUnixCompatibleCommand(cmd);
+};
+
 export const isAgentCompatible = (agent: Agent, platform: Platform): boolean => {
     // If specific platform command exists, it's definitely compatible
     if (agent.platformCommands && agent.platformCommands[platform]) {
@@ -40,12 +54,7 @@ export const isAgentCompatible = (agent: Agent, platform: Platform): boolean => 
     // If strict separation is desired, we might consider if the default is compatible
     const defaultCmd = agent.platformCommands?.default || agent.installCommand;
 
-    if (platform === 'windows') {
-        return isWindowsCompatibleCommand(defaultCmd);
-    }
-
-    // For Linux/Mac, we check if it looks like Windows-only
-    return isUnixCompatibleCommand(defaultCmd);
+    return isCommandCompatible(defaultCmd, platform);
 };
 
 export const getAgentInstallCommand = (agent: Agent, platform: Platform): string => {

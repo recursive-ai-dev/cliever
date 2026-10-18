@@ -16,7 +16,8 @@ const STOPWORDS = new Set<string>([
   'without', 'would', 'you', 'your', 'yours',
 
   // Common “search intent” filler
-  'find', 'search', 'list', 'lookup', 'give', 'get', 'want', 'need', 'help', 'about', 'like'
+  'find', 'search', 'list', 'lookup', 'give', 'get', 'want', 'need', 'help', 'about', 'like',
+  'tool', 'tools', 'some', 'any', 'best', 'good', 'recommend', 'something'
 ]);
 
 const stem = (tokenRaw: string): string => {
@@ -125,14 +126,17 @@ const expandSynonyms = (token: string): string[] => {
 
 
 
-const tokenMatchScore = (tokenRaw: string, haystack: string, haystackWords: Set<string>): number => {
+const tokenMatchScore = (tokenRaw: string, haystack: string, haystackWords: Set<string>, nameWords: string[]): number => {
   const token = tokenRaw;
   if (!token) return 0;
 
   // Best possible: exact word hit
   if (haystackWords.has(token)) return 1;
 
-  // Short tokens are word-only; if not present, score 0.
+  // Search-as-you-type: a prefix of any word in the tool's name ("cla" → Claude Code).
+  if (token.length >= 2 && nameWords.some(word => word.startsWith(token))) return 0.9;
+
+  // Other short tokens are word-only; if not present, score 0.
   if (token.length <= 3) return 0;
 
   // Substring hit in the full haystack is still strong.
@@ -174,7 +178,10 @@ export const agentMatchesQuery = (agent: Agent, query: string): boolean => {
     ].join(' ')
   );
 
-  const haystackWords = new Set<string>(haystack.split(' ').filter(Boolean));
+  // Index whole words plus their sub-parts so "gpt" hits "gpt-engineer" and "cpp" hits "llama.cpp".
+  const splitWord = (word: string): string[] => [word, ...word.split(/[._/-]+/)].filter(Boolean);
+  const haystackWords = new Set<string>(haystack.split(' ').flatMap(splitWord));
+  const nameWords = normalize(agent.name).split(' ').flatMap(splitWord);
 
   // Score-based matching:
   // - For short queries, require a strong hit.
@@ -187,7 +194,7 @@ export const agentMatchesQuery = (agent: Agent, query: string): boolean => {
     const expanded = expandSynonyms(token).map(normalize).map(stem);
     let best = 0;
     for (const t of expanded) {
-      const score = tokenMatchScore(t, haystack, haystackWords);
+      const score = tokenMatchScore(t, haystack, haystackWords, nameWords);
       if (score > best) best = score;
       if (best >= 1) break;
     }
@@ -205,9 +212,10 @@ export const agentMatchesQuery = (agent: Agent, query: string): boolean => {
   }
 
   const ratio = matched / total;
-  // Thresholds tuned to feel “comprehensive” for English phrases
-  // while still preventing “everything matches” when you type a paragraph.
-  const requiredRatio = total >= 6 ? 0.34 : total >= 4 ? 0.4 : 0.5;
+  // Short multi-word queries ("claude code", "local llm") are precise: every
+  // term must match. Longer English phrases get looser thresholds so they feel
+  // comprehensive without letting a paragraph match everything.
+  const requiredRatio = total >= 6 ? 0.34 : total >= 4 ? 0.4 : 1;
   const requiredMatches = total >= 6 ? 2 : 1;
 
   return ratio >= requiredRatio && matched >= requiredMatches && strongSignals >= 1;

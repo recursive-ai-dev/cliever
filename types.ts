@@ -83,6 +83,8 @@ export interface Agent {
   version?: string;
   /** Troubleshooting tips for common installation issues */
   troubleshooting?: string[];
+  /** Upstream repository is archived / no longer maintained */
+  archived?: boolean;
 
   /**
    * Trust & authority (optional): populated via local verification.

@@ -4,13 +4,14 @@ A production-grade, futuristic web application for discovering and managing CLI 
 
 ## 🚀 Features
 
-- **Agent Discovery**: Browse 100+ carefully curated CLI AI tools and frameworks
+- **Agent Discovery**: Browse 159 curated CLI AI agents, frameworks, and terminal staples, with star counts, versions, and archive flags refreshed from upstream (see `REGISTRY_METADATA_AS_OF` in `constants.ts`)
 - **Real-time Sync**: Live repository status checking backed by the GitHub API with intelligent rate limiting, ETag conditional requests, circuit breakers, and a deterministic offline fallback
 - **AI-Powered Chat**: Built-in expert system for agent recommendations (offline local model, optionally enriched by trained LaPoet checkpoints)
 - **Comparison Tool**: Side-by-side analysis of different agents
 - **Collaboration Simulator (Mission Control)**: Recruit a squad of agents and preview how they work together
 - **Shell Command Generator**: Natural-language → shell command translation, offline
-- **Take Bundle**: Collect install commands across agents and export a per-OS bundle script
+- **Take Bundle**: Collect install commands across agents and export a per-OS bundle script (manual steps and platform-incompatible commands are commented out, so the script stays runnable)
+- **Exact Install Commands**: Copy buttons copy the stored command verbatim — no rewriting
 - **Install Doctor**: Paste an installation error and get an offline diagnosis per package manager
 - **Production Monitoring**: Built-in live telemetry dashboard (events, latency, health, readiness) with JSON export
 - **Theme System**: Four hand-tuned themes with CSS-variable theming and persistence

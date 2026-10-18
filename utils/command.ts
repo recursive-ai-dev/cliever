@@ -1,14 +1,24 @@
-export const suggestCopyCommand = (command: string): string => {
+/**
+ * Install-command helpers.
+ *
+ * Registry commands are displayed and copied exactly as stored (see
+ * TESTING.md "Command Copy Behavior"). Some platform entries are manual
+ * instructions rather than shell commands ("Download AppImage from …",
+ * "Use WSL …"); those must never be emitted into a script as-is.
+ */
+
+/** Returns the command to copy: the stored command, trimmed, never rewritten. */
+export const getCopyCommand = (command: string): string => command.trim();
+
+/**
+ * Heuristic: shell commands start with a lowercase program name, path, or
+ * variable and contain no `<placeholder>` tokens. Prose instructions start
+ * with a capitalized word ("Download", "Install via", "Use WSL").
+ */
+export const isExecutableCommand = (command: string): boolean => {
   const trimmed = command.trim();
-  if (!trimmed) return '';
-
-  // Heuristic: if the command is a global npm install, prefer a runnable npx form.
-  // We keep this intentionally simple ("try"), since binary/package names can differ.
-  const npmGlobal = trimmed.match(/^npm\s+(?:install|i)\s+-g\s+(.+)$/i);
-  if (npmGlobal) {
-    const pkg = (npmGlobal[1] ?? '').trim().split(/\s+/)[0];
-    if (pkg) return `npx --yes ${pkg}`;
-  }
-
-  return trimmed;
+  if (!trimmed) return false;
+  if (!/^[a-z0-9_.~/$"'(-]/.test(trimmed)) return false;
+  if (/<[a-z][\w-]*>/i.test(trimmed)) return false;
+  return true;
 };

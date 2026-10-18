@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { AGENTS } from './constants';
+import { AGENTS, REGISTRY_METADATA_AS_OF } from './constants';
 import { Agent, AgentCategory, Review, ChatMessage, AgentStatus } from './types';
 import TerminalHero from './components/TerminalHero';
 import AgentCard from './components/AgentCard';
@@ -16,7 +16,7 @@ import {
   Search, MessageSquare,
   ArrowUpDown, Terminal, X, Tag,
   Wifi, ChevronLeft, ChevronRight, RefreshCw, Activity,
-  Users, SquareTerminal, Gauge
+  Users, SquareTerminal, Gauge, SearchX
 } from 'lucide-react';
 import { askExpert } from './services/localModelService';
 import { AnalyticsService, AnalyticsEventType } from './services/analyticsService';
@@ -148,19 +148,30 @@ const App: React.FC = () => {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 12;
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Chat State
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
+    const greeting: ChatMessage[] = [
+      { role: 'model', text: `cliever node initialized. ${AGENTS.length} tools indexed offline. Ask for a recommendation or a comparison.` }
+    ];
     try {
       const saved = localStorage.getItem('cliever_chat_history');
-      return saved ? JSON.parse(saved) : [
-        { role: 'model', text: 'cliever Node initialized. Direct metadata pulling active. How can I assist?' }
-      ];
+      if (!saved) return greeting;
+      const parsed: unknown = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return greeting;
+      // Persisted data is untrusted: keep only well-formed messages, capped.
+      const messages = parsed.filter((m): m is ChatMessage =>
+        typeof m === 'object' && m !== null &&
+        ((m as ChatMessage).role === 'user' || (m as ChatMessage).role === 'model') &&
+        typeof (m as ChatMessage).text === 'string'
+      ).slice(-200);
+      return messages.length > 0 ? messages : greeting;
     } catch {
-      return [{ role: 'model', text: 'cliever Node initialized. Direct metadata pulling active. How can I assist?' }];
+      return greeting;
     }
   });
 
@@ -300,13 +311,24 @@ const App: React.FC = () => {
   }, []);
 
   // Filter & Sort Logic (Memoized for performance)
+  // Search + platform filter, before category: drives the category pill counts.
+  const searchMatchedAgents = useMemo(() => agents.filter(agent =>
+    agentMatchesQuery(agent, searchQuery) &&
+    (globalPlatform ? isAgentCompatible(agent, globalPlatform) : true)
+  ), [agents, searchQuery, globalPlatform]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const agent of searchMatchedAgents) {
+      counts.set(agent.category, (counts.get(agent.category) ?? 0) + 1);
+    }
+    return counts;
+  }, [searchMatchedAgents]);
+
   const sortedFilteredAgents = useMemo(() => {
-    const result = agents.filter(agent => {
-      const matchesSearch = agentMatchesQuery(agent, searchQuery);
-      const matchesCategory = selectedCategory === 'All' || agent.category === selectedCategory;
-      const matchesPlatform = globalPlatform ? isAgentCompatible(agent, globalPlatform) : true;
-      return matchesSearch && matchesCategory && matchesPlatform;
-    });
+    const result = searchMatchedAgents.filter(agent =>
+      selectedCategory === 'All' || agent.category === selectedCategory
+    );
 
     return result.sort((a, b) => {
       switch (sortBy) {
@@ -324,7 +346,7 @@ const App: React.FC = () => {
         default: return 0;
       }
     });
-  }, [agents, searchQuery, selectedCategory, sortBy, globalPlatform]);
+  }, [searchMatchedAgents, selectedCategory, sortBy]);
 
   // Pagination Logic
   const totalPages = Math.ceil(sortedFilteredAgents.length / itemsPerPage);
@@ -395,9 +417,39 @@ const App: React.FC = () => {
     return () => clearTimeout(handle);
   }, [searchQuery]);
 
+  // "/" focuses registry search (unless the user is already typing somewhere).
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
+      const input = searchInputRef.current;
+      if (!input) return;
+      event.preventDefault();
+      input.focus();
+      input.select();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // Page changes bring the top of the grid back into view.
+  const goToPage = useCallback((page: number) => {
+    setCurrentPage(page);
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    document.getElementById('registry')?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setSearchQuery('');
+    setSelectedCategory('All');
+    setCurrentPage(1);
+  }, []);
+
   const handleGlobalSync = async () => {
     setIsGlobalSyncing(true);
-    setChatHistory(prev => [...prev, { role: 'model', text: '> PULLING LATEST METADATA FROM REGISTRY NODES...' }]);
+    setChatHistory(prev => [...prev, { role: 'model', text: '> CHECKING REPOSITORY STATUS FOR ALL ENTRIES...' }]);
 
     // Logic: Force all visible agents into SYNCING state
     setAgents(prev => prev.map(a => ({ ...a, status: 'SYNCING' })));
@@ -423,7 +475,7 @@ const App: React.FC = () => {
       });
 
       setLastGlobalSync(new Date().toLocaleTimeString());
-      setChatHistory(prev => [...prev, { role: 'model', text: `> REGISTRY SYNCHRONIZED. ${syncResults.size}/${agents.length} NODES VERIFIED. INTEGRITY 100%.` }]);
+      setChatHistory(prev => [...prev, { role: 'model', text: `> STATUS CHECK COMPLETE. ${syncResults.size}/${agents.length} entries checked. Registry metadata as of ${REGISTRY_METADATA_AS_OF}.` }]);
     } catch (error) {
       console.error('Sync failed:', error);
       setChatHistory(prev => [...prev, { role: 'model', text: '> SYNC ERROR. FALLING BACK TO CACHED DATA.' }]);
@@ -544,7 +596,13 @@ const App: React.FC = () => {
     }
   };
 
-  const categories = ['All', ...Object.values(AgentCategory)];
+  // Hide empty categories for the current search/platform, but never hide the active one.
+  const categories = ['All', ...Object.values(AgentCategory).filter(cat =>
+    (categoryCounts.get(cat) ?? 0) > 0 || cat === selectedCategory
+  )];
+  const firstVisible = sortedFilteredAgents.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const lastVisible = Math.min(currentPage * itemsPerPage, sortedFilteredAgents.length);
+  const hasActiveFilters = searchQuery.trim().length > 0 || selectedCategory !== 'All';
 
   if (!globalPlatform) {
     return <PlatformSelector onSelect={setGlobalPlatform} />;
@@ -554,10 +612,13 @@ const App: React.FC = () => {
     <div className="min-h-screen font-sans selection:bg-cyan-500/30 selection:text-cyan-200"
       style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
 
+      <a href="#registry" className="skip-link">Skip to registry</a>
+
       {/* HUD / Navigation */}
-      <nav className="sticky top-0 z-30 backdrop-blur-md border-b px-6 py-4 flex justify-between items-center glass-panel"
-        style={{ borderColor: 'var(--border)' }}>
-        <div className="flex items-center gap-6">
+      <nav className="sticky top-0 z-30 backdrop-blur-md border-b px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center gap-3 glass-panel"
+        style={{ borderColor: 'var(--border)' }}
+        aria-label="Primary">
+        <div className="flex items-center gap-6 shrink-0">
           <div className="font-mono font-bold text-xl tracking-tighter" style={{ color: 'var(--text-primary)' }}>
             clie<span style={{ color: 'var(--accent)' }}>ver</span>
           </div>
@@ -569,13 +630,15 @@ const App: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <Wifi size={12} style={{ color: 'var(--accent)' }} />
-              NODES: <span style={{ color: 'var(--text-primary)' }}>{agents.length}</span>
+              TOOLS: <span style={{ color: 'var(--text-primary)' }}>{agents.length}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex gap-3 items-center">
+        <div className="flex gap-2 sm:gap-3 items-center justify-end min-w-0">
           <ThemeSelector />
+          {/* On narrow screens the tool buttons scroll horizontally instead of wrapping the sticky bar. */}
+          <div className="flex gap-2 sm:gap-3 items-center min-w-0 overflow-x-auto no-scrollbar py-1 pr-1 *:shrink-0">
           <button
             onClick={() => setShowTelemetry(true)}
             className="p-2 rounded-full transition-all border"
@@ -691,21 +754,23 @@ const App: React.FC = () => {
           >
             <Terminal size={18} />
           </button>
+          </div>
         </div>
       </nav>
 
       <TerminalHero isScanning={isGlobalSyncing} />
 
       {/* Registry Tools Section */}
-      <main className="max-w-7xl mx-auto px-6 py-12 relative z-10">
+      <main id="registry" tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 py-12 relative z-10 focus:outline-none scroll-mt-20">
 
         {/* Advanced Sector Controls */}
         <div className="flex flex-col gap-6 mb-12">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 pr-8 [mask-image:linear-gradient(to_right,black_calc(100%-3rem),transparent)]" role="group" aria-label="Filter by category">
               {categories.map(cat => (
                 <button
                   key={cat}
+                  aria-pressed={selectedCategory === cat}
                   onClick={() => {
                     setSelectedCategory(cat);
                     setCurrentPage(1);
@@ -722,11 +787,11 @@ const App: React.FC = () => {
                   }}
                 >
                   {cat.toUpperCase()}
+                  <span className="ml-1.5 opacity-70" aria-hidden="true">
+                    {cat === 'All' ? searchMatchedAgents.length : (categoryCounts.get(cat) ?? 0)}
+                  </span>
                 </button>
               ))}
-            </div>
-            <div className="text-[10px] font-mono uppercase" style={{ color: 'var(--text-muted)' }}>
-              Last Global Sync: {lastGlobalSync}
             </div>
           </div>
 
@@ -734,17 +799,30 @@ const App: React.FC = () => {
             <div className="relative flex-grow">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
               <input
-                type="text"
+                ref={searchInputRef}
+                type="search"
                 placeholder="SEARCH_REGISTRY_METADATA..."
                 value={searchQuery}
                 onChange={(e) => {
                   const sanitized = sanitizeSearchQuery(e.target.value);
                   setSearchQuery(sanitized);
+                  setCurrentPage(1);
                 }}
-                className="w-full rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none font-mono shadow-inner transition-all"
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape' && searchQuery) {
+                    e.preventDefault();
+                    setSearchQuery('');
+                    setCurrentPage(1);
+                  }
+                }}
+                className="w-full rounded-xl pl-12 pr-12 py-3 text-sm focus:outline-none font-mono shadow-inner transition-all"
                 style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                 aria-label="Search registry"
+                aria-keyshortcuts="/"
               />
+              <kbd className={`${searchQuery ? 'hidden' : 'hidden md:block'} absolute right-4 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] font-mono pointer-events-none`}
+                style={{ border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+                aria-hidden="true">/</kbd>
             </div>
 
             <div className="relative min-w-[200px]">
@@ -766,8 +844,54 @@ const App: React.FC = () => {
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 mb-6 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+          <div className="flex items-center gap-4">
+            <p role="status" aria-live="polite">
+              {sortedFilteredAgents.length === 0
+                ? 'No matching tools'
+                : `Showing ${firstVisible}–${lastVisible} of ${sortedFilteredAgents.length} tool${sortedFilteredAgents.length === 1 ? '' : 's'}`}
+            </p>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1 uppercase tracking-wider hover:text-[var(--accent)] transition-colors"
+              >
+                <X size={12} aria-hidden="true" /> Clear filters
+              </button>
+            )}
+          </div>
+          <div className="text-[10px] uppercase">
+            <span title="Star counts, versions, and archive flags were refreshed from upstream on this date">Metadata: {REGISTRY_METADATA_AS_OF}</span>
+            <span className="mx-2" aria-hidden="true">·</span>
+            <span>Last status check: {lastGlobalSync}</span>
+          </div>
+        </div>
+
+        {sortedFilteredAgents.length === 0 && (
+          <div className="flex flex-col items-center justify-center text-center gap-4 py-20 mb-12 rounded-2xl"
+            style={{ border: '1px dashed var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
+            <SearchX size={36} style={{ color: 'var(--text-muted)' }} aria-hidden="true" />
+            <div>
+              <p className="font-mono text-sm" style={{ color: 'var(--text-primary)' }}>No tools match your filters.</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                {globalPlatform ? `Results are limited to tools that install on ${globalPlatform === 'macos' ? 'macOS' : globalPlatform === 'windows' ? 'Windows' : 'Linux'}. ` : ''}
+                Try a broader search or another category.
+              </p>
+            </div>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 rounded-lg text-xs font-mono font-bold uppercase"
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--bg-primary)' }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Dynamic Agent Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-12">
           {paginatedAgents.map(agent => (
             <AgentCard
               key={agent.id}
@@ -788,7 +912,7 @@ const App: React.FC = () => {
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-6 py-8" style={{ borderTop: '1px solid var(--border)' }}>
             <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              onClick={() => goToPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
               className="p-2 rounded-lg transition-all disabled:opacity-20"
               style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
@@ -798,12 +922,12 @@ const App: React.FC = () => {
             </button>
             <div className="flex items-center gap-3 font-mono text-sm">
               <span style={{ color: 'var(--text-muted)' }}>SECTOR</span>
-              <span className="font-bold" style={{ color: 'var(--accent)' }}>{currentPage}</span>
+              <span className="font-bold" style={{ color: 'var(--accent)' }} aria-current="page">{currentPage}</span>
               <span style={{ color: 'var(--border)' }}>/</span>
               <span style={{ color: 'var(--text-muted)' }}>{totalPages}</span>
             </div>
             <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
               className="p-2 rounded-lg transition-all disabled:opacity-20"
               style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}

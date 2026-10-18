@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { X, Copy, Check, Monitor, Apple, Terminal, AlertCircle } from 'lucide-react';
 import { Agent } from '../types';
 import { copyText } from '../utils/clipboard';
+import { getCopyCommand, isExecutableCommand } from '../utils/command';
+import { isCommandCompatible } from '../utils/platform';
 
 export type BundleOS = 'windows' | 'macos' | 'linux';
 
@@ -10,6 +12,8 @@ interface TakeBundleLayerProps {
   bundledAgentIds: string[];
   onClose: () => void;
 }
+
+const OS_LABELS: Record<BundleOS, string> = { windows: 'Windows', macos: 'macOS', linux: 'Linux' };
 
 const detectOS = (): BundleOS => {
   const userAgent = navigator.userAgent.toLowerCase();
@@ -54,22 +58,37 @@ const TakeBundleLayer: React.FC<TakeBundleLayerProps> = ({ agents, bundledAgentI
   }, [agents, bundledAgentIds]);
 
   const commands = useMemo(() => {
-    return bundledAgents.map(a => ({
-      id: a.id,
-      name: a.name,
-      command: pickCommandForOS(a, os),
-      notes: a.platformCommands?.notes
-    }));
+    return bundledAgents.map(a => {
+      const command = getCopyCommand(pickCommandForOS(a, os));
+      return {
+        id: a.id,
+        name: a.name,
+        command,
+        executable: isExecutableCommand(command),
+        compatible: isCommandCompatible(command, os),
+        notes: a.platformCommands?.notes
+      };
+    });
   }, [bundledAgents, os]);
 
   const outputText = useMemo(() => {
     if (commands.length === 0) return '';
 
-    const header = `# Bundle commands (${os})\n`;
+    const manualCount = commands.filter(c => !c.executable || !c.compatible).length;
+    const header = [
+      `# Bundle commands (${os})`,
+      manualCount > 0 ? `# ${manualCount} item${manualCount === 1 ? '' : 's'} need manual steps and are commented out below.` : ''
+    ].filter(Boolean).join('\n') + '\n';
     const body = commands
       .map(c => {
         const comment = `\n# ${c.name}\n`;
-        const cmd = c.command;
+        // Prose instructions ("Download AppImage…", "Use WSL…") are not shell
+        // commands; keep them visible but commented so the script stays runnable.
+        const cmd = !c.executable
+          ? `# Manual step: ${c.command}`
+          : !c.compatible
+            ? `# No native ${OS_LABELS[os]} install; run in a compatible environment (e.g. WSL): ${c.command}`
+            : c.command;
         const note = c.notes ? `\n# Note: ${c.notes}\n` : '';
         return `${comment}${cmd}${note}`;
       })
@@ -111,7 +130,7 @@ const TakeBundleLayer: React.FC<TakeBundleLayerProps> = ({ agents, bundledAgentI
               {bundledAgentIds.length} command{bundledAgentIds.length === 1 ? '' : 's'} saved
             </div>
           </div>
-          <button onClick={onClose} className="transition-colors" style={{ color: 'var(--text-muted)' }}>
+          <button onClick={onClose} className="transition-colors" style={{ color: 'var(--text-muted)' }} aria-label="Close bundle" title="Close (Esc)">
             <X size={18} />
           </button>
         </div>
@@ -130,6 +149,7 @@ const TakeBundleLayer: React.FC<TakeBundleLayerProps> = ({ agents, bundledAgentI
             <div className="flex gap-2">
               <button
                 onClick={() => setOS('windows')}
+                aria-pressed={os === 'windows'}
                 className="px-3 py-2 rounded-lg text-xs font-mono transition-all"
                 style={{
                   backgroundColor: os === 'windows' ? 'var(--accent-glow)' : 'var(--bg-primary)',
@@ -144,6 +164,7 @@ const TakeBundleLayer: React.FC<TakeBundleLayerProps> = ({ agents, bundledAgentI
               </button>
               <button
                 onClick={() => setOS('macos')}
+                aria-pressed={os === 'macos'}
                 className="px-3 py-2 rounded-lg text-xs font-mono transition-all"
                 style={{
                   backgroundColor: os === 'macos' ? 'var(--accent-glow)' : 'var(--bg-primary)',
@@ -158,6 +179,7 @@ const TakeBundleLayer: React.FC<TakeBundleLayerProps> = ({ agents, bundledAgentI
               </button>
               <button
                 onClick={() => setOS('linux')}
+                aria-pressed={os === 'linux'}
                 className="px-3 py-2 rounded-lg text-xs font-mono transition-all"
                 style={{
                   backgroundColor: os === 'linux' ? 'var(--accent-glow)' : 'var(--bg-primary)',

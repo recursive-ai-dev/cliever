@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { Agent } from '../types';
-import { Terminal, Star, Check, Plus, Minus, ArrowRightLeft, Activity, Github, Users, AlertTriangle } from 'lucide-react';
-import { suggestCopyCommand } from '../utils/command';
+import { Terminal, Star, Check, Plus, Minus, ArrowRightLeft, Activity, Github, Globe, Users, AlertTriangle, Archive, Info } from 'lucide-react';
+import { getCopyCommand, isExecutableCommand } from '../utils/command';
+import { formatStars, isGitHubRepoUrl, starsTooltip } from '../utils/format';
 import { copyText } from '../utils/clipboard';
 import { AnalyticsService, AnalyticsEventType } from '../services/analyticsService';
 
@@ -28,7 +29,9 @@ const AgentCard: React.FC<AgentCardProps> = React.memo(({ agent, onClick, isInSq
     return agent.installCommand;
   }, [agent, platform]);
 
-  const copyCommand = React.useMemo(() => suggestCopyCommand(installCommand), [installCommand]);
+  const copyCommand = React.useMemo(() => getCopyCommand(installCommand), [installCommand]);
+  const isManualStep = React.useMemo(() => !isExecutableCommand(copyCommand), [copyCommand]);
+  const hasGitHubRepo = isGitHubRepoUrl(agent.repoUrl);
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -98,13 +101,25 @@ const AgentCard: React.FC<AgentCardProps> = React.memo(({ agent, onClick, isInSq
           {agent.status || 'LIVE'}
         </div>
         <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+          {agent.archived && (
+            <span
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-widest"
+              style={{ color: 'var(--warning)', border: '1px solid color-mix(in srgb, var(--warning) 35%, transparent)' }}
+              title="Upstream repository is archived and no longer maintained"
+            >
+              <Archive size={10} aria-hidden="true" />
+              ARCHIVED
+            </span>
+          )}
           <div
             title={`Verification: ${verificationStyle.label}${agent.lastVerified ? ` (last: ${agent.lastVerified.slice(0, 10)})` : ''}`}
             className="w-2 h-2 rounded-full"
             style={{ backgroundColor: verificationStyle.color, boxShadow: `0 0 10px color-mix(in srgb, ${verificationStyle.color} 35%, transparent)` }}
           />
-          <Star size={12} style={{ color: 'var(--warning)' }} />
-          {agent.stars.toLocaleString()}
+          <span className="flex items-center gap-1" title={starsTooltip(agent.stars, agent.repoUrl)}>
+            <Star size={12} style={{ color: 'var(--warning)' }} aria-hidden="true" />
+            {formatStars(agent.stars)}
+          </span>
         </div>
       </div>
 
@@ -159,7 +174,14 @@ const AgentCard: React.FC<AgentCardProps> = React.memo(({ agent, onClick, isInSq
 
         <h3 className="text-xl font-bold mb-2 transition-colors font-mono tracking-tight"
           style={{ color: 'var(--text-primary)' }}>
-          {agent.name}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClick(agent); }}
+            className="text-left rounded-sm hover:text-[var(--accent)] focus-visible:text-[var(--accent)]"
+            aria-label={`View details for ${agent.name}`}
+          >
+            {agent.name}
+          </button>
         </h3>
         <p className="text-xs font-mono mb-4 uppercase tracking-tighter" style={{ color: 'var(--text-muted)' }}>{agent.category}</p>
 
@@ -178,34 +200,36 @@ const AgentCard: React.FC<AgentCardProps> = React.memo(({ agent, onClick, isInSq
 
         <div className="flex items-center gap-3">
           <button
-            onClick={(e) => { e.stopPropagation(); window.open(agent.repoUrl, '_blank'); }}
-            className="p-2.5 rounded-xl transition-all hover:text-white"
+            onClick={(e) => { e.stopPropagation(); window.open(agent.repoUrl, '_blank', 'noopener,noreferrer'); }}
+            className="p-2.5 rounded-xl transition-all hover:text-[var(--text-primary)]"
             style={{
               backgroundColor: 'var(--bg-tertiary)',
               border: '1px solid var(--border)',
               color: 'var(--text-muted)'
             }}
-            title="View Source Repository"
+            title={hasGitHubRepo ? 'View source repository' : 'Visit project website'}
+            aria-label={hasGitHubRepo ? `View ${agent.name} source repository` : `Visit ${agent.name} website`}
           >
-            <Github size={18} />
+            {hasGitHubRepo ? <Github size={18} /> : <Globe size={18} />}
           </button>
           <button
             onClick={handleCopy}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all"
+            className="flex-1 min-w-0 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all"
             style={{
               backgroundColor: copied ? 'var(--accent-glow)' : 'var(--accent)',
-              color: copied ? 'var(--success)' : copyState === 'failed' ? 'var(--bg-primary)' : 'var(--bg-primary)',
+              color: copied ? 'var(--success)' : 'var(--bg-primary)',
               border: copied ? '1px solid var(--success)' : copyState === 'failed' ? '1px solid var(--error)' : '1px solid transparent'
             }}
-            title={copied ? 'Copied' : copyState === 'failed' ? 'Copy failed — select the command manually' : copyCommand}
+            title={copied ? 'Copied' : copyState === 'failed' ? 'Copy failed — select the command manually' : isManualStep ? `Manual step: ${copyCommand}` : copyCommand}
+            aria-label={isManualStep ? `Copy install instructions for ${agent.name}` : `Copy install command for ${agent.name}`}
           >
-            {copied ? <Check size={14} /> : copyState === 'failed' ? <AlertTriangle size={14} style={{ color: 'var(--error)' }} /> : <span className="font-mono">$</span>}
+            {copied ? <Check size={14} /> : copyState === 'failed' ? <AlertTriangle size={14} style={{ color: 'var(--error)' }} /> : isManualStep ? <Info size={14} aria-hidden="true" /> : <span className="font-mono" aria-hidden="true">$</span>}
             {copied ? (
               'COPIED'
             ) : copyState === 'failed' ? (
               'COPY_FAILED'
             ) : (
-              <span className="font-mono text-[10px] truncate max-w-[220px]">{copyCommand}</span>
+              <span className="font-mono text-[10px] truncate min-w-0">{copyCommand}</span>
             )}
           </button>
         </div>
