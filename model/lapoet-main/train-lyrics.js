@@ -17,22 +17,45 @@ const __dirname = path.dirname(__filename);
 const FILTERED_PATTERNS = ['icryafterikill']; // Song/album title patterns to filter
 const MIN_LINE_LENGTH = 10; // Minimum characters for a valid lyric line
 
-// Training curriculum (simple but extensible)
-const PRETRAIN_GENERAL_EPOCHS = 50;
-const PRETRAIN_CLI_EPOCHS = 30;
-const LYRICS_EPOCHS = 100;
+// ============================================================================
+// LINE-LEVEL METER/RHYME SCORING (real signal for the value estimator, not noise)
+// ============================================================================
 
-const CLI_PRETRAIN_FILE_PREFIXES = [
-  'cli-',
-  'git-',
-  'docker-',
-  'k8s-',
-  'npm-',
-  'node-',
-  'python-',
-  'powershell-',
-  'windows-',
-];
+function estimateSyllables(word) {
+  const w = word.toLowerCase().replace(/[^a-z]/g, '');
+  if (!w) return 0;
+  const groups = w.match(/[aeiouy]+/g) || [];
+  let count = groups.length;
+  if (w.endsWith('e') && !w.endsWith('le') && count > 1) count -= 1;
+  return Math.max(count, 1);
+}
+
+function getRhymeKey(word) {
+  const w = word.toLowerCase().replace(/[^a-z]/g, '');
+  const match = w.match(/[aeiouy][a-z]*$/);
+  return match ? match[0] : w.slice(-3);
+}
+
+function rhymeSimilarity(a, b) {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const minLen = Math.min(a.length, b.length);
+  let shared = 0;
+  for (let i = 1; i <= minLen; i++) {
+    if (a.slice(-i) === b.slice(-i)) shared = i;
+    else break;
+  }
+  return shared / Math.max(a.length, b.length, 1);
+}
+
+function computeMeterScore(tokens) {
+  if (tokens.length === 0) return 0;
+  const totalSyllables = tokens.reduce((sum, t) => sum + estimateSyllables(t), 0);
+  // Sung lyric lines tend to land around 8-10 syllables; score falls off outside that range
+  const target = 9;
+  const deviation = Math.abs(totalSyllables - target) / target;
+  return Math.max(0, 1 - deviation);
+}
 
 // ============================================================================
 // CORE ALGORITHM IMPLEMENTATIONS (Adapted for Node.js)
@@ -51,7 +74,13 @@ class KernelPCA {
   }
 
   _polynomialKernel(x, y) {
-    const dotProduct = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+    // Normalize inputs (cosine similarity) so the kernel stays bounded
+    // regardless of a word's raw embedding magnitude/frequency — otherwise
+    // (dot+1)^degree explodes for high-frequency words and destabilizes
+    // the eigendecomposition below.
+    const normX = Math.sqrt(x.reduce((sum, xi) => sum + xi * xi, 0)) || 1;
+    const normY = Math.sqrt(y.reduce((sum, yi) => sum + yi * yi, 0)) || 1;
+    const dotProduct = x.reduce((sum, xi, i) => sum + (xi / normX) * (y[i] / normY), 0);
     return Math.pow(dotProduct + 1, this.degree);
   }
 
@@ -89,15 +118,22 @@ class KernelPCA {
     const n = matrix.length;
     const eigenvectors = [];
     const eigenvalues = [];
-    
-    for (let k = 0; k < Math.min(this.nComponents, n); k++) {
-      let v = Array(n).fill().map(() => Math.random() - 0.5);
-      
+
+    // Deflating only once before the power iteration isn't enough: floating-point
+    // drift reintroduces the dominant eigenvector on every multiply, so every
+    // component converges back to the same one. Re-run deflation after each
+    // iteration instead.
+    const deflate = (v) => {
       for (let i = 0; i < eigenvectors.length; i++) {
         const dot = v.reduce((sum, vi, idx) => sum + vi * eigenvectors[i][idx], 0);
         v = v.map((vi, idx) => vi - dot * eigenvectors[i][idx]);
       }
-      
+      return v;
+    };
+
+    for (let k = 0; k < Math.min(this.nComponents, n); k++) {
+      let v = deflate(Array(n).fill().map(() => Math.random() - 0.5));
+
       for (let iter = 0; iter < 50; iter++) {
         let newV = Array(n).fill(0);
         for (let i = 0; i < n; i++) {
@@ -105,23 +141,23 @@ class KernelPCA {
             newV[i] += matrix[i][j] * v[j];
           }
         }
-        v = newV;
-        
-        const norm = Math.sqrt(v.reduce((sum, vi) => sum + vi * vi, 0));
-        v = v.map(vi => vi / norm);
+        newV = deflate(newV);
+
+        const norm = Math.sqrt(newV.reduce((sum, vi) => sum + vi * vi, 0));
+        v = norm > 1e-12 ? newV.map(vi => vi / norm) : newV;
       }
-      
+
       let eigenvalue = 0;
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
           eigenvalue += v[i] * matrix[i][j] * v[j];
         }
       }
-      
+
       eigenvectors.push(v);
       eigenvalues.push(Math.abs(eigenvalue));
     }
-    
+
     return { eigenvectors, eigenvalues };
   }
 
@@ -321,33 +357,40 @@ class AGTuneEngine {
     
     for (let epoch = 0; epoch < epochs; epoch++) {
       let epochReward = 0;
-      
+      let previousRhymeKey = null;
+
       corpus.forEach((text) => {
         const tokens = this._tokenize(text);
         const states = [];
-        
+
+        const meterScore = computeMeterScore(tokens);
+        const lastWord = tokens[tokens.length - 1];
+        const rhymeKey = lastWord ? getRhymeKey(lastWord) : null;
+        const rhymeConsistency = rhymeSimilarity(rhymeKey, previousRhymeKey);
+        previousRhymeKey = rhymeKey || previousRhymeKey;
+
         for (let i = 0; i < Math.min(tokens.length, 10); i++) {
           const word = tokens[i];
           const eVec = this.emotionalSpace.get(word) || Array(8).fill(0);
-          
+
           states.push({
             eSpaceTraj: [eVec],
-            meterScore: Math.random() * 0.5 + 0.5,
-            rhymeConsistency: Math.random() * 0.5,
+            meterScore,
+            rhymeConsistency,
             novelty: 1.0 - (i / tokens.length),
             lineCount: i,
             themeCoherence: 0.7
           });
         }
-        
+
         for (let i = 0; i < states.length - 1; i++) {
-          const reward = 0.5 + Math.random() * 0.3;
+          const reward = 0.5 * meterScore + 0.5 * rhymeConsistency;
           this.valueEstimator.update(states[i], reward, states[i + 1], false);
           epochReward += reward;
         }
-        
+
         if (states.length > 0) {
-          const finalReward = 0.8;
+          const finalReward = 0.6 * meterScore + 0.4 * rhymeConsistency;
           this.valueEstimator.update(states[states.length - 1], finalReward, states[0], true);
           epochReward += finalReward;
         }
@@ -392,7 +435,20 @@ class AGTuneEngine {
   }
 
   loadCheckpoint(filepath) {
-    const data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+    let data;
+    try {
+      data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+      if (typeof data !== 'object' || data === null) {
+        throw new Error('Checkpoint data is not a valid JSON object');
+      }
+      if (!data.vocabulary || !data.embeddings || !data.emotionalSpace) {
+        throw new Error('Checkpoint data is missing required fields');
+      }
+    } catch (error) {
+      console.error(`Error loading checkpoint from ${filepath}: ${error.message}`);
+      throw error;
+    }
+
     
     this.vocabulary = new Map(data.vocabulary);
     this.embeddings = new Map(data.embeddings);
@@ -422,29 +478,18 @@ class AGTuneEngine {
 // MAIN TRAINING SCRIPT
 // ============================================================================
 
-function isCliPretrainingFile(filename) {
-  const lower = filename.toLowerCase();
-  return CLI_PRETRAIN_FILE_PREFIXES.some(prefix => lower.startsWith(prefix));
-}
-
-function loadTxtLines(filepath) {
-  const content = fs.readFileSync(filepath, 'utf8');
-  return content
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > MIN_LINE_LENGTH);
-}
-
 async function loadPretrainingData() {
   const pretrainingDir = path.join(__dirname, 'pretraining');
   
-  // Using synchronous fs calls for simplicity in CLI training script
-  if (!fs.existsSync(pretrainingDir)) {
+  // Check if directory exists
+  try {
+    await fs.promises.access(pretrainingDir);
+  } catch (error) {
     console.log('\nNo pretraining directory found, skipping pre-training phase.');
     return [];
   }
   
-  const files = fs.readdirSync(pretrainingDir).filter(f => f.endsWith('.txt'));
+  const files = (await fs.promises.readdir(pretrainingDir)).filter(f => f.endsWith('.txt'));
   
   if (files.length === 0) {
     console.log('\nNo pretraining files found, skipping pre-training phase.');
@@ -452,42 +497,50 @@ async function loadPretrainingData() {
   }
   
   console.log(`\nFound ${files.length} pretraining files:\n`);
+  
+  const allData = [];
+  
+  // Read all files concurrently
+  const fileContents = await Promise.all(
+    files.map(async (file) => {
+      const filepath = path.join(pretrainingDir, file);
+      const content = await fs.promises.readFile(filepath, 'utf8');
+      return { file, content };
+    })
+  );
 
-  const generalData = [];
-  const cliData = [];
-
-  for (const file of files) {
-    const filepath = path.join(pretrainingDir, file);
-    const lines = loadTxtLines(filepath);
-
-    if (isCliPretrainingFile(file)) {
-      cliData.push(...lines);
-      console.log(`  - ${file}: ${lines.length} lines (cli)`);
-    } else {
-      generalData.push(...lines);
-      console.log(`  - ${file}: ${lines.length} lines`);
-    }
+  for (const { file, content } of fileContents) {
+    // Split by lines and filter out empty lines
+    const lines = content.split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > MIN_LINE_LENGTH);
+    
+    allData.push(...lines);
+    console.log(`  - ${file}: ${lines.length} lines`);
   }
-
-  console.log(`\nGeneral pretraining corpus: ${generalData.length} lines`);
-  console.log(`CLI competence corpus: ${cliData.length} lines`);
-  console.log(`Total pretraining corpus: ${generalData.length + cliData.length} lines\n`);
-
-  return { generalData, cliData };
+  
+  console.log(`\nTotal pretraining corpus: ${allData.length} lines\n`);
+  return allData;
 }
 
 async function loadAllLyrics() {
   const lyricsDir = path.join(__dirname, 'lyrics');
-  const files = fs.readdirSync(lyricsDir).filter(f => f.endsWith('.txt'));
+  const files = (await fs.promises.readdir(lyricsDir)).filter(f => f.endsWith('.txt'));
   
   console.log(`\nFound ${files.length} lyrics files:\n`);
   
   const allLyrics = [];
   
-  for (const file of files) {
-    const filepath = path.join(lyricsDir, file);
-    const content = fs.readFileSync(filepath, 'utf8');
-    
+  // Read all files concurrently
+  const fileContents = await Promise.all(
+    files.map(async (file) => {
+      const filepath = path.join(lyricsDir, file);
+      const content = await fs.promises.readFile(filepath, 'utf8');
+      return { file, content };
+    })
+  );
+
+  for (const { file, content } of fileContents) {
     // Split by lines and filter out empty lines and title lines
     const lines = content.split('\n')
       .map(line => line.trim())
@@ -512,40 +565,21 @@ async function main() {
   // Initialize engine
   const engine = new AGTuneEngine();
   
-  // PHASE 1: Pre-training on general English / technical data
-  const { generalData, cliData } = await loadPretrainingData();
-
-  let didAnyPretraining = false;
-
-  if (generalData.length > 0) {
+  // PHASE 1: Pre-training on English language data
+  const pretrainingData = await loadPretrainingData();
+  
+  if (pretrainingData.length > 0) {
     console.log('\n' + '='.repeat(70));
     console.log('PHASE 1: PRE-TRAINING ON ENGLISH LANGUAGE DATA');
     console.log('='.repeat(70));
     
-    const pretrainReward = engine.train(generalData, PRETRAIN_GENERAL_EPOCHS);
-    didAnyPretraining = true;
+    const pretrainingEpochs = 50; // Pre-train for foundational understanding
+    const pretrainReward = engine.train(pretrainingData, pretrainingEpochs);
     
     console.log('\n' + '='.repeat(70));
     console.log('PRE-TRAINING COMPLETE');
     console.log('='.repeat(70));
     console.log(`Average Reward: ${pretrainReward.toFixed(4)}`);
-    console.log(`Vocabulary Size: ${engine.vocabulary.size}`);
-    console.log(`Emotional Space Vectors: ${engine.emotionalSpace.size}`);
-  }
-
-  // PHASE 1B: CLI competence (incremental to preserve general pretraining)
-  if (cliData.length > 0) {
-    console.log('\n' + '='.repeat(70));
-    console.log('PHASE 1B: CLI COMPETENCE PRE-TRAINING');
-    console.log('='.repeat(70));
-
-    const cliReward = engine.train(cliData, PRETRAIN_CLI_EPOCHS, didAnyPretraining);
-    didAnyPretraining = true;
-
-    console.log('\n' + '='.repeat(70));
-    console.log('CLI PRE-TRAINING COMPLETE');
-    console.log('='.repeat(70));
-    console.log(`Average Reward: ${cliReward.toFixed(4)}`);
     console.log(`Vocabulary Size: ${engine.vocabulary.size}`);
     console.log(`Emotional Space Vectors: ${engine.emotionalSpace.size}`);
   }
@@ -557,7 +591,9 @@ async function main() {
   console.log('PHASE 2: FINE-TUNING ON LYRICS DATA');
   console.log('='.repeat(70));
   
-  const avgReward = engine.train(lyrics, LYRICS_EPOCHS, didAnyPretraining);
+  const epochs = 100; // Extensive training to ensure retention
+  const isIncremental = pretrainingData.length > 0; // Preserve pre-training if it was done
+  const avgReward = engine.train(lyrics, epochs, isIncremental);
   
   console.log('\n' + '='.repeat(70));
   console.log('FINE-TUNING COMPLETE');

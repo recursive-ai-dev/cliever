@@ -18,6 +18,45 @@ const FILTERED_PATTERNS = ['icryafterikill']; // Song/album title patterns to fi
 const MIN_LINE_LENGTH = 10; // Minimum characters for a valid lyric line
 const TRACKED_WORDS = ['ghost', 'shadow', 'death']; // Words to track across sessions
 
+// ============================================================================
+// LINE-LEVEL METER/RHYME SCORING (real signal for the value estimator, not noise)
+// ============================================================================
+
+function estimateSyllables(word) {
+  const w = word.toLowerCase().replace(/[^a-z]/g, '');
+  if (!w) return 0;
+  const groups = w.match(/[aeiouy]+/g) || [];
+  let count = groups.length;
+  if (w.endsWith('e') && !w.endsWith('le') && count > 1) count -= 1;
+  return Math.max(count, 1);
+}
+
+function getRhymeKey(word) {
+  const w = word.toLowerCase().replace(/[^a-z]/g, '');
+  const match = w.match(/[aeiouy][a-z]*$/);
+  return match ? match[0] : w.slice(-3);
+}
+
+function rhymeSimilarity(a, b) {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const minLen = Math.min(a.length, b.length);
+  let shared = 0;
+  for (let i = 1; i <= minLen; i++) {
+    if (a.slice(-i) === b.slice(-i)) shared = i;
+    else break;
+  }
+  return shared / Math.max(a.length, b.length, 1);
+}
+
+function computeMeterScore(tokens) {
+  if (tokens.length === 0) return 0;
+  const totalSyllables = tokens.reduce((sum, t) => sum + estimateSyllables(t), 0);
+  const target = 9;
+  const deviation = Math.abs(totalSyllables - target) / target;
+  return Math.max(0, 1 - deviation);
+}
+
 // Import the training utilities (simplified versions)
 class KernelPCA {
   constructor(nComponents = 8, degree = 3) {
@@ -29,7 +68,13 @@ class KernelPCA {
   }
 
   _polynomialKernel(x, y) {
-    const dotProduct = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+    // Normalize inputs (cosine similarity) so the kernel stays bounded
+    // regardless of a word's raw embedding magnitude/frequency — otherwise
+    // (dot+1)^degree explodes for high-frequency words and destabilizes
+    // the eigendecomposition below.
+    const normX = Math.sqrt(x.reduce((sum, xi) => sum + xi * xi, 0)) || 1;
+    const normY = Math.sqrt(y.reduce((sum, yi) => sum + yi * yi, 0)) || 1;
+    const dotProduct = x.reduce((sum, xi, i) => sum + (xi / normX) * (y[i] / normY), 0);
     return Math.pow(dotProduct + 1, this.degree);
   }
 
@@ -67,15 +112,22 @@ class KernelPCA {
     const n = matrix.length;
     const eigenvectors = [];
     const eigenvalues = [];
-    
-    for (let k = 0; k < Math.min(this.nComponents, n); k++) {
-      let v = Array(n).fill().map(() => Math.random() - 0.5);
-      
+
+    // Deflating only once before the power iteration isn't enough: floating-point
+    // drift reintroduces the dominant eigenvector on every multiply, so every
+    // component converges back to the same one. Re-run deflation after each
+    // iteration instead.
+    const deflate = (v) => {
       for (let i = 0; i < eigenvectors.length; i++) {
         const dot = v.reduce((sum, vi, idx) => sum + vi * eigenvectors[i][idx], 0);
         v = v.map((vi, idx) => vi - dot * eigenvectors[i][idx]);
       }
-      
+      return v;
+    };
+
+    for (let k = 0; k < Math.min(this.nComponents, n); k++) {
+      let v = deflate(Array(n).fill().map(() => Math.random() - 0.5));
+
       for (let iter = 0; iter < 50; iter++) {
         let newV = Array(n).fill(0);
         for (let i = 0; i < n; i++) {
@@ -83,23 +135,23 @@ class KernelPCA {
             newV[i] += matrix[i][j] * v[j];
           }
         }
-        v = newV;
-        
-        const norm = Math.sqrt(v.reduce((sum, vi) => sum + vi * vi, 0));
-        v = v.map(vi => vi / norm);
+        newV = deflate(newV);
+
+        const norm = Math.sqrt(newV.reduce((sum, vi) => sum + vi * vi, 0));
+        v = norm > 1e-12 ? newV.map(vi => vi / norm) : newV;
       }
-      
+
       let eigenvalue = 0;
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
           eigenvalue += v[i] * matrix[i][j] * v[j];
         }
       }
-      
+
       eigenvectors.push(v);
       eigenvalues.push(Math.abs(eigenvalue));
     }
-    
+
     return { eigenvectors, eigenvalues };
   }
 
@@ -276,33 +328,40 @@ class AGTuneEngine {
     
     for (let epoch = 0; epoch < epochs; epoch++) {
       let epochReward = 0;
-      
+      let previousRhymeKey = null;
+
       corpus.forEach((text) => {
         const tokens = this._tokenize(text);
         const states = [];
-        
+
+        const meterScore = computeMeterScore(tokens);
+        const lastWord = tokens[tokens.length - 1];
+        const rhymeKey = lastWord ? getRhymeKey(lastWord) : null;
+        const rhymeConsistency = rhymeSimilarity(rhymeKey, previousRhymeKey);
+        previousRhymeKey = rhymeKey || previousRhymeKey;
+
         for (let i = 0; i < Math.min(tokens.length, 10); i++) {
           const word = tokens[i];
           const eVec = this.emotionalSpace.get(word) || Array(8).fill(0);
-          
+
           states.push({
             eSpaceTraj: [eVec],
-            meterScore: Math.random() * 0.5 + 0.5,
-            rhymeConsistency: Math.random() * 0.5,
+            meterScore,
+            rhymeConsistency,
             novelty: 1.0 - (i / tokens.length),
             lineCount: i,
             themeCoherence: 0.7
           });
         }
-        
+
         for (let i = 0; i < states.length - 1; i++) {
-          const reward = 0.5 + Math.random() * 0.3;
+          const reward = 0.5 * meterScore + 0.5 * rhymeConsistency;
           this.valueEstimator.update(states[i], reward, states[i + 1], false);
           epochReward += reward;
         }
-        
+
         if (states.length > 0) {
-          const finalReward = 0.8;
+          const finalReward = 0.6 * meterScore + 0.4 * rhymeConsistency;
           this.valueEstimator.update(states[states.length - 1], finalReward, states[0], true);
           epochReward += finalReward;
         }
@@ -342,7 +401,20 @@ class AGTuneEngine {
   }
 
   loadCheckpoint(filepath) {
-    const data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+    let data;
+    try {
+      data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+      if (typeof data !== 'object' || data === null) {
+        throw new Error('Checkpoint data is not a valid JSON object');
+      }
+      if (!data.vocabulary || !data.embeddings || !data.emotionalSpace) {
+        throw new Error('Checkpoint data is missing required fields');
+      }
+    } catch (error) {
+      console.error(`Error loading checkpoint from ${filepath}: ${error.message}`);
+      throw error;
+    }
+
     
     this.vocabulary = new Map(data.vocabulary);
     this.embeddings = new Map(data.embeddings);
@@ -366,35 +438,28 @@ class AGTuneEngine {
 
 async function loadLyricsSubset(files) {
   const lyricsDir = path.join(__dirname, 'lyrics');
-  const allLyrics = [];
   
-  for (const file of files) {
+  const promises = files.map(async (file) => {
     const filepath = path.join(lyricsDir, file);
-    if (!fs.existsSync(filepath)) continue;
-    
-    const content = fs.readFileSync(filepath, 'utf8');
-    const lines = content.split('\n')
-      .map(line => line.trim())
-      .filter(line => {
-        return line.length > MIN_LINE_LENGTH && 
-               !FILTERED_PATTERNS.some(pattern => line === pattern);
-      });
-    
-    allLyrics.push(...lines);
-  }
+    try {
+      const content = await fs.promises.readFile(filepath, 'utf8');
+      return content.split('\n')
+        .map(line => line.trim())
+        .filter(line => {
+          return line.length > MIN_LINE_LENGTH &&
+                 !FILTERED_PATTERNS.some(pattern => line === pattern);
+        });
+    } catch (err) {
+      if (err.code === 'ENOENT') return [];
+      throw err;
+    }
+  });
   
-  return allLyrics;
+  const results = await Promise.all(promises);
+  return results.flat();
 }
 
-async function main() {
-  console.log('='.repeat(70));
-  console.log('CONTINUOUS TRAINING DEMONSTRATION');
-  console.log('Proving indefinite information retention across multiple sessions');
-  console.log('='.repeat(70));
-
-  const checkpointPath = path.join(__dirname, 'continuous-checkpoint.json');
-  
-  // Session 1: Train on first batch of lyrics
+async function runSession1(checkpointPath) {
   console.log('\n[Session 1] Training on first batch of lyrics...');
   const engine1 = new AGTuneEngine();
   const batch1 = await loadLyricsSubset([
@@ -412,15 +477,17 @@ async function main() {
   console.log(`  ✓ Session 1 checkpoint saved`);
   
   // Track some words for verification
-  const trackedWords = TRACKED_WORDS;
   const session1Vectors = new Map();
-  trackedWords.forEach(word => {
+  TRACKED_WORDS.forEach(word => {
     if (engine1.emotionalSpace.has(word)) {
       session1Vectors.set(word, [...engine1.emotionalSpace.get(word)]);
     }
   });
 
-  // Session 2: Load checkpoint and train on more lyrics
+  return { engine: engine1, batch: batch1, session1Vectors };
+}
+
+async function runSession2(checkpointPath, previousBatch) {
   console.log('\n[Session 2] Loading checkpoint and adding more lyrics...');
   const engine2 = new AGTuneEngine();
   engine2.loadCheckpoint(checkpointPath);
@@ -434,7 +501,7 @@ async function main() {
   ]);
   
   console.log(`  Adding ${batch2.length} more lines`);
-  const reward2 = engine2.train([...batch1, ...batch2], 30);
+  const reward2 = engine2.train([...previousBatch, ...batch2], 30);
   console.log(`  Trained with avg reward: ${reward2.toFixed(4)}`);
   console.log(`  Vocabulary size: ${engine2.vocabulary.size}`);
   
@@ -443,7 +510,7 @@ async function main() {
   
   // Verify Session 1 words are still present
   console.log('\n  Verifying Session 1 words retained:');
-  trackedWords.forEach(word => {
+  TRACKED_WORDS.forEach(word => {
     if (engine2.emotionalSpace.has(word)) {
       console.log(`    ✓ "${word}" still present`);
     } else {
@@ -451,7 +518,10 @@ async function main() {
     }
   });
 
-  // Session 3: Load again and train on final batch
+  return { engine: engine2, batch: batch2 };
+}
+
+async function runSession3(checkpointPath, previousBatches) {
   console.log('\n[Session 3] Loading checkpoint and adding final batch...');
   const engine3 = new AGTuneEngine();
   engine3.loadCheckpoint(checkpointPath);
@@ -465,7 +535,7 @@ async function main() {
   ]);
   
   console.log(`  Adding ${batch3.length} more lines`);
-  const reward3 = engine3.train([...batch1, ...batch2, ...batch3], 30);
+  const reward3 = engine3.train([...previousBatches, ...batch3], 30);
   console.log(`  Trained with avg reward: ${reward3.toFixed(4)}`);
   console.log(`  Vocabulary size: ${engine3.vocabulary.size}`);
   
@@ -474,7 +544,7 @@ async function main() {
   
   // Final verification
   console.log('\n  Final verification of all tracked words:');
-  trackedWords.forEach(word => {
+  TRACKED_WORDS.forEach(word => {
     if (engine3.emotionalSpace.has(word)) {
       console.log(`    ✓ "${word}" retained across 3 sessions`);
     } else {
@@ -482,19 +552,37 @@ async function main() {
     }
   });
 
-  // Summary
+  return { engine: engine3, batch: batch3 };
+}
+
+function printSummary(session1, session2, session3) {
   console.log('\n' + '='.repeat(70));
   console.log('CONTINUOUS TRAINING SUMMARY');
   console.log('='.repeat(70));
-  console.log(`Session 1: ${batch1.length} lines, ${engine1.vocabulary.size} words`);
-  console.log(`Session 2: ${batch1.length + batch2.length} lines total`);
-  console.log(`Session 3: ${batch1.length + batch2.length + batch3.length} lines total`);
-  console.log(`\nFinal vocabulary: ${engine3.vocabulary.size} unique words`);
-  console.log(`Final emotional vectors: ${engine3.emotionalSpace.size}`);
+  console.log(`Session 1: ${session1.batch.length} lines, ${session1.engine.vocabulary.size} words`);
+  console.log(`Session 2: ${session1.batch.length + session2.batch.length} lines total`);
+  console.log(`Session 3: ${session1.batch.length + session2.batch.length + session3.batch.length} lines total`);
+  console.log(`\nFinal vocabulary: ${session3.engine.vocabulary.size} unique words`);
+  console.log(`Final emotional vectors: ${session3.engine.emotionalSpace.size}`);
   console.log('\n✓ Model successfully retained information across 3 training sessions');
   console.log('✓ Information persists indefinitely through checkpoints');
   console.log('✓ Can continue adding new lyrics without losing old knowledge');
   console.log('='.repeat(70));
+}
+
+async function main() {
+  console.log('='.repeat(70));
+  console.log('CONTINUOUS TRAINING DEMONSTRATION');
+  console.log('Proving indefinite information retention across multiple sessions');
+  console.log('='.repeat(70));
+
+  const checkpointPath = path.join(__dirname, 'continuous-checkpoint.json');
+
+  const session1 = await runSession1(checkpointPath);
+  const session2 = await runSession2(checkpointPath, session1.batch);
+  const session3 = await runSession3(checkpointPath, [...session1.batch, ...session2.batch]);
+
+  printSummary(session1, session2, session3);
   
   // Cleanup
   if (fs.existsSync(checkpointPath)) {

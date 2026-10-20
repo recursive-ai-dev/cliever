@@ -56,3 +56,45 @@ Document the three-perspective planning approach for the formatting adjustment i
 - **Chosen approach:** Minimal, localized formatting normalization.
 - **Why:** Aligns with all three perspectives by improving readability while preserving meaning and reducing risk.
 - **Mapped logic chain reference:** LOGIC-MAP.md (Steps 1–3).
+
+## Perspective Selection: Linguistic Engine & Corpus Loading
+
+### CEO Perspective
+- **Goal:** Reduce risk of low-quality generation outputs while keeping runtime cost bounded.
+- **Choice:** Deterministic grapheme tokenization and lexicon-backed adverbs reduce unpredictable grammar drift.
+
+### Junior Developer Perspective
+- **Goal:** Keep logic transparent and maintainable with clear entry selection.
+- **Choice:** Centralized `_selectEntry` for lexicon filtering and explicit transitivity branching makes behavior easy to trace.
+
+### End Customer Perspective
+- **Goal:** Generate more natural sentences and better phonetic analysis for poetry.
+- **Choice:** Silent-e handling, vowel-team parsing, and real lyric file ingestion yield higher fidelity output.
+
+### Combined Choice Justification
+- **CEO:** Deterministic processing lowers variance and supports stable results.
+- **Junior Dev:** Shared selection utilities minimize duplication and debugging time.
+- **End Customer:** Higher phonetic and grammatical coherence improves usability.
+
+**Mapped logic chain reference:** LOGIC-MAP.md (Steps 1–3, Linguistic Engine & Corpus Loading).
+
+# Perspective Selection: Deterministic Seeding & RNG Propagation
+
+### CEO Perspective
+- **Goal:** Provide repeatable outcomes for demos, testing, and stakeholder review.
+- **Choice:** Single seeded RNG enables consistent outputs when `?seed=` is supplied.
+
+### Junior Developer Perspective
+- **Goal:** Make randomness easy to reason about and debug.
+- **Choice:** Central RNG injection removes hidden `Math.random()` usage and simplifies tracing.
+
+### End Customer Perspective
+- **Goal:** Allow users to reproduce poems or training runs reliably.
+- **Choice:** Seed parsing accepts numeric and string values without requiring new UI controls.
+
+### Combined Choice Justification
+- **CEO:** Repeatable results reduce demo risk and simplify acceptance validation.
+- **Junior Dev:** Shared RNG path avoids fragmented randomness sources.
+- **End Customer:** Reproducible outputs improve trust and usability.
+
+**Mapped logic chain reference:** LOGIC-MAP.md (Steps 1–3, Deterministic Seeding & RNG Propagation).

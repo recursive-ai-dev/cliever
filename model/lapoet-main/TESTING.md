@@ -51,3 +51,43 @@ This change is documentation-only and does not affect runtime behavior. The veri
 ## Edge Case Reasoning
 - Ensured headings and bullet text remain unchanged aside from whitespace normalization.
 - Confirmed the file renders correctly with standard Markdown list formatting.
+
+## Test Matrix: Linguistic Engine & Corpus Loading
+Each test uses real logic paths without mock data. Run the generation/analysis methods with the inputs below.
+
+- **-1:** Empty string input to `analyze('')` should return `syllables: 1`, empty phoneme string, and stress pattern `[]`.
+- **0:** Single vowel word `analyze('a')` should return one syllable and a vowel-only phoneme string.
+- **1:** Silent-e word `analyze('cake')` should map to a long vowel and keep syllable count at 1.
+- **2:** Vowel-team word `analyze('rain')` should resolve the `ai` team to a long vowel symbol.
+- **3:** Digraph word `analyze('shadow')` should map `sh` to `S` without re-processing the `h`.
+- **4:** Terminal `y` word `analyze('fly')` should end with `Y`.
+- **5:** Mixed prefixes/suffixes `analyze('replaying')` should preserve token order and not double-count vowels.
+- **6:** Intransitive verb generation should not force a direct object (generate multiple `VP` outputs).
+- **7:** Transitive verb generation should prefer `V NP` while still allowing `V` or `V PP` at low probability.
+- **8:** Grammar flattening should include `Adv` from the lexicon (no hardcoded adverbs).
+- **9:** Corpus loader should return lines from `/lyrics/*.txt` when files exist.
+- **10:** Corpus loader should deduplicate identical lines across embedded and file-based sources.
+- **11:** Corpus loader should skip empty lines and whitespace-only lines from lyric files.
+- **12:** Corpus loader should fall back to embedded corpus when no lyric files resolve.
+
+## Execution Notes
+- Use the existing UI controls to trigger sentence generation and analysis for cases 1–8.
+- For corpus validation (cases 9–12), temporarily log the returned array length and sample entries after invoking `loadLyricsCorpus`.
+
+## Test Matrix: Deterministic Seeding & RNG Propagation
+Run generation with `?seed=` in the URL and confirm reproducible output across reloads.
+
+- **-1:** `?seed=` empty string should fall back to default entropy (non-deterministic across reloads).
+- **0:** `?seed=0` yields a stable poem across reloads.
+- **1:** `?seed=1` yields a stable poem across reloads.
+- **2:** `?seed=2` yields a stable poem across reloads.
+- **3:** `?seed=3` yields a stable poem across reloads.
+- **4:** `?seed=-42` yields a stable poem across reloads.
+- **5:** `?seed=3.14` is floored to `3` and yields stable output.
+- **6:** `?seed=00012` resolves to `12` and yields stable output.
+- **7:** `?seed=alpha` hashes to a deterministic 32-bit seed and yields stable output.
+- **8:** `?seed=alpha` matches identical output across browsers (same seed string).
+- **9:** `?seed=alpha-beta` yields a different but stable output from `alpha`.
+- **10:** `?seed=9999999999` yields stable output without overflow errors.
+- **11:** Remove `?seed=` after using a deterministic seed to confirm non-deterministic default again.
+- **12:** Load a checkpoint after setting `?seed=` and confirm continued deterministic generation.
