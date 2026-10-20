@@ -6,7 +6,7 @@ A production-grade, futuristic web application for discovering and managing CLI 
 
 - **Agent Discovery**: Browse 159 curated CLI AI agents, frameworks, and terminal staples, with star counts, versions, and archive flags refreshed from upstream (see `REGISTRY_METADATA_AS_OF` in `constants.ts`)
 - **Real-time Sync**: Live repository status checking backed by the GitHub API with intelligent rate limiting, ETag conditional requests, circuit breakers, and a deterministic offline fallback
-- **AI-Powered Chat**: Built-in expert system for agent recommendations (offline local model, optionally enriched by trained LaPoet checkpoints)
+- **AI-Powered Chat**: Built-in expert system for agent recommendations (offline: Kira for conversation and memory, a deterministic registry skill for find/compare/install questions)
 - **Comparison Tool**: Side-by-side analysis of different agents
 - **Collaboration Simulator (Mission Control)**: Recruit a squad of agents and preview how they work together
 - **Shell Command Generator**: Natural-language → shell command translation, offline
@@ -53,7 +53,7 @@ A production-grade, futuristic web application for discovering and managing CLI 
 - **Frontend**: React 19 + TypeScript (Strict Mode)
 - **Build Tool**: Vite 6 + Tailwind CSS 4 (compiled at build time — no runtime CDN)
 - **Charts**: Recharts (live telemetry dashboard)
-- **AI Integration**: Local offline model (Universal Linguistic Engine) + trained LaPoet checkpoints served from `public/`
+- **AI Integration**: Kira (vendored in `kira/`, runs in a Web Worker) + `services/registrySkill.ts`; CLI how-to corpus served from `public/corpus/`
 - **Icons**: Lucide React
 
 ### Production Features

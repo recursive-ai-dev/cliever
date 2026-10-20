@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.7.0 — 2026-10-20
+
+### Chat: LaPoet → Kira
+
+The registry chat is now **Kira**, an offline, deterministic dialogue engine (Apache-2.0, vendored in `kira/`), plus a registry skill that answers from the 159-tool roster. No LLM, no network.
+
+- **Routing:** conversation and memory go to Kira ("hello", "I like docker", "what do you remember about me"). Find / what-is / install / compare questions are answered from the registry (`services/registrySkill.ts`). Generic how-to questions use the knowledge base plus the bundled CLI corpus. Anything else falls back to Kira.
+- **Kira configuration:** default persona is `direct`; her capabilities and about text describe the CLI registry; references to the standalone app's "Engine lab" were removed. The model hash and dialogue version were updated (`dialogue/4.2.0-cliever`). Her lexicon is the stock compiled artifact, so she doesn't know CLI vocabulary; the registry skill covers that.
+- **Runtime:** Kira loads lazily in a Web Worker (inline fallback). The conversation is stored as a replayable, checksummed event log in `localStorage` and verified on load.
+- **Removed:** the LaPoet checkpoints (`public/lapoet/*checkpoint*`, ~15 MB), the ULE runtime path and `lapoetTrainedService`, and the `lapoet:train-poems` trainer. `model/lapoet-main` is kept as an upstream snapshot (synced with the fixed AG-TUNE engine). CLI corpora moved to `public/corpus/`.
+- **Tests:** `npm test` now runs registry validation, Kira's own suite (48 tests), the Kira module staleness check and new unit tests for the registry skill and Kira service. E2E covers registry answers and Kira memory.
+
 ## 2.6.0 — 2026-10-18
 
 ### Roster: 108 → 159 tools

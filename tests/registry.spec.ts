@@ -135,15 +135,34 @@ test.describe('agent detail', () => {
 });
 
 test.describe('chat', () => {
+  const send = async (page: import('@playwright/test').Page, text: string) => {
+    const input = page.getByPlaceholder('QUERY_REGISTRY...');
+    await input.fill(text);
+    await input.press('Enter');
+    await expect(page.getByText(text, { exact: true })).toBeVisible();
+  };
+
   test('system chat answers via the local engine', async ({ page }) => {
     await page.getByRole('button', { name: /Open system chat/i }).click();
-    const input = page.getByPlaceholder('QUERY_REGISTRY...');
-    await input.fill('how do I install these tools?');
-    await input.press('Enter');
-    // User bubble visible
-    await expect(page.getByText('how do I install these tools?')).toBeVisible();
+    await send(page, 'how do I install these tools?');
     // Local engine response arrives (Expert Analysis document)
     await expect(page.getByText(/Expert Analysis/i)).toBeVisible({ timeout: 15000 });
+  });
+
+  test('registry questions are answered from the registry', async ({ page }) => {
+    await page.getByRole('button', { name: /Open system chat/i }).click();
+    await send(page, 'find me a coding agent');
+    await expect(page.getByText(/Matching tools/i)).toBeVisible({ timeout: 15000 });
+  });
+
+  test('Kira greets and remembers what you tell her', async ({ page }) => {
+    await page.getByRole('button', { name: /Open system chat/i }).click();
+    await send(page, 'hello');
+    await expect(page.getByText(/call you|on your mind|talk about/i).first()).toBeVisible({ timeout: 30000 });
+    await send(page, 'I like docker');
+    await expect(page.getByText(/remember that/i)).toBeVisible({ timeout: 15000 });
+    await send(page, 'what do you remember about me');
+    await expect(page.getByText(/Here.s what you.ve told me/i)).toBeVisible({ timeout: 15000 });
   });
 });
 

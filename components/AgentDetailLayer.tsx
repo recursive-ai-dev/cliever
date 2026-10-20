@@ -39,15 +39,15 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
     const [loading, setLoading] = useState(false);
     const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
 
-    // LaPoet Chat (agent-scoped)
-    const [lapoetChatOpen, setLapoetChatOpen] = useState(false);
-    const [lapoetChatInput, setLapoetChatInput] = useState('');
-    const [lapoetChatLoading, setLapoetChatLoading] = useState(false);
-    const [lapoetChatHistory, setLapoetChatHistory] = useState<ChatMessage[]>([
-        { role: 'model', text: 'LaPoet ready. Ask about installation, tradeoffs, or workflow fit.' }
+    // Kira Chat (agent-scoped)
+    const [kiraChatOpen, setKiraChatOpen] = useState(false);
+    const [kiraChatInput, setKiraChatInput] = useState('');
+    const [kiraChatLoading, setKiraChatLoading] = useState(false);
+    const [kiraChatHistory, setKiraChatHistory] = useState<ChatMessage[]>([
+        { role: 'model', text: 'Kira ready. Ask about installation, tradeoffs, or workflow fit.' }
     ]);
-    const lapoetChatRequestIdRef = useRef<number>(0);
-    const lapoetChatAbortRef = useRef<AbortController | null>(null);
+    const kiraChatRequestIdRef = useRef<number>(0);
+    const kiraChatAbortRef = useRef<AbortController | null>(null);
 
     const [verifying, setVerifying] = useState(false);
     const [verifyCopied, setVerifyCopied] = useState(false);
@@ -214,50 +214,50 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
         ].join('\n');
     };
 
-    const handleLapoetChatSubmit = async (e: React.FormEvent) => {
+    const handleKiraChatSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (lapoetChatLoading) return;
-        if (!lapoetChatInput.trim()) return;
+        if (kiraChatLoading) return;
+        if (!kiraChatInput.trim()) return;
 
-        const sanitizedInput = sanitizeChatMessage(lapoetChatInput);
+        const sanitizedInput = sanitizeChatMessage(kiraChatInput);
         const requestId = Date.now();
-        lapoetChatRequestIdRef.current = requestId;
+        kiraChatRequestIdRef.current = requestId;
 
         // Abort any in-flight request (agent panel chat only)
-        if (lapoetChatAbortRef.current) {
-            lapoetChatAbortRef.current.abort('replaced');
+        if (kiraChatAbortRef.current) {
+            kiraChatAbortRef.current.abort('replaced');
         }
         const controller = new AbortController();
-        lapoetChatAbortRef.current = controller;
+        kiraChatAbortRef.current = controller;
 
-        setLapoetChatHistory(prev => [...prev, { role: 'user', text: sanitizedInput }]);
-        setLapoetChatInput('');
-        setLapoetChatLoading(true);
+        setKiraChatHistory(prev => [...prev, { role: 'user', text: sanitizedInput }]);
+        setKiraChatInput('');
+        setKiraChatLoading(true);
 
         const context = buildAgentChatContext(agent);
 
         try {
             const response = await askExpert(sanitizedInput, context, { signal: controller.signal });
-            const isLatest = lapoetChatRequestIdRef.current === requestId;
+            const isLatest = kiraChatRequestIdRef.current === requestId;
             if (isLatest) {
-                setLapoetChatHistory(prev => [...prev, { role: 'model', text: response }]);
+                setKiraChatHistory(prev => [...prev, { role: 'model', text: response }]);
             }
         } catch (error: unknown) {
-            const isLatest = lapoetChatRequestIdRef.current === requestId;
+            const isLatest = kiraChatRequestIdRef.current === requestId;
             if (!isLatest) return;
 
             if ((error as Error)?.name === 'AbortError') {
-                setLapoetChatHistory(prev => [...prev, { role: 'model', text: 'Request cancelled. You can retry.' }]);
+                setKiraChatHistory(prev => [...prev, { role: 'model', text: 'Request cancelled. You can retry.' }]);
                 return;
             }
 
-            setLapoetChatHistory(prev => [
+            setKiraChatHistory(prev => [
                 ...prev,
                 { role: 'model', text: `Error: ${getErrorMessage(error)}` }
             ]);
         } finally {
-            if (lapoetChatRequestIdRef.current === requestId) {
-                setLapoetChatLoading(false);
+            if (kiraChatRequestIdRef.current === requestId) {
+                setKiraChatLoading(false);
             }
         }
     };
@@ -690,25 +690,25 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                             )}
                         </div>
 
-                        {/* LaPoet Chat Section */}
+                        {/* Kira Chat Section */}
                         <div className="pt-6" style={{ borderTop: '1px solid var(--border)' }}>
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xs font-mono uppercase tracking-wider flex items-center gap-2" style={{ color: 'var(--accent)' }}>
-                                    <MessageSquare size={14} /> LaPoet Chat
+                                    <MessageSquare size={14} /> Kira Chat
                                 </h3>
                                 <button
-                                    onClick={() => setLapoetChatOpen(v => !v)}
+                                    onClick={() => setKiraChatOpen(v => !v)}
                                     className="text-[10px] uppercase px-3 py-1.5 rounded transition-colors"
                                     style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
                                 >
-                                    {lapoetChatOpen ? 'Hide' : 'Open'}
+                                    {kiraChatOpen ? 'Hide' : 'Open'}
                                 </button>
                             </div>
 
-                            {lapoetChatOpen && (
+                            {kiraChatOpen && (
                                 <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)', backgroundColor: 'var(--bg-tertiary)' }}>
                                     <div className="max-h-64 overflow-y-auto p-3 space-y-3 font-mono text-xs" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                                        {lapoetChatHistory.map((msg, idx) => (
+                                        {kiraChatHistory.map((msg, idx) => (
                                             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                                 <div
                                                     className="max-w-[90%] rounded-lg p-3 whitespace-pre-wrap"
@@ -721,27 +721,27 @@ const AgentDetailLayer: React.FC<AgentDetailLayerProps> = ({ agent, onClose, onC
                                                 </div>
                                             </div>
                                         ))}
-                                        {lapoetChatLoading && (
+                                        {kiraChatLoading && (
                                             <div className="animate-pulse" style={{ color: 'var(--accent)' }}>
                                                 &gt; ANALYZING...
                                             </div>
                                         )}
                                     </div>
 
-                                    <form onSubmit={handleLapoetChatSubmit} className="p-3" style={{ borderTop: '1px solid var(--border)' }}>
+                                    <form onSubmit={handleKiraChatSubmit} className="p-3" style={{ borderTop: '1px solid var(--border)' }}>
                                         <div className="flex gap-2">
                                             <input
                                                 className="flex-1 rounded-lg px-3 py-2 text-xs focus:outline-none font-mono"
                                                 style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                                                placeholder="Ask LaPoet about this tool..."
+                                                placeholder="Ask Kira about this tool..."
                                                 aria-label="Ask the local engine about this tool"
-                                                value={lapoetChatInput}
-                                                onChange={(e) => setLapoetChatInput(sanitizeChatMessage(e.target.value))}
-                                                disabled={lapoetChatLoading}
+                                                value={kiraChatInput}
+                                                onChange={(e) => setKiraChatInput(sanitizeChatMessage(e.target.value))}
+                                                disabled={kiraChatLoading}
                                             />
                                             <button
                                                 type="submit"
-                                                disabled={lapoetChatLoading || !lapoetChatInput.trim()}
+                                                disabled={kiraChatLoading || !kiraChatInput.trim()}
                                                 className="px-3 rounded-lg text-[10px] font-bold uppercase transition-all disabled:opacity-30"
                                                 style={{ backgroundColor: 'var(--accent)', color: 'var(--bg-primary)' }}
                                             >

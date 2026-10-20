@@ -15,7 +15,7 @@ const TerminalHero: React.FC<TerminalHeroProps> = ({ isScanning = false }) => {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'model'; text: string }>>([
-    { role: 'model', text: 'LaPoet link online. Ask me about agents, installs, or workflows.' }
+    { role: 'model', text: 'Kira online. Ask me about agents, installs, or workflows.' }
   ]);
   const chatRequestIdRef = useRef<number>(0);
   const chatAbortRef = useRef<AbortController | null>(null);
@@ -71,7 +71,7 @@ const TerminalHero: React.FC<TerminalHeroProps> = ({ isScanning = false }) => {
     setChatLoading(true);
 
     try {
-      const response = await askExpert(sanitizedInput, 'Hero CLI window (LaPoet overlay chat)', {
+      const response = await askExpert(sanitizedInput, 'Hero CLI window (Kira overlay chat)', {
         signal: controller.signal,
       });
       const isLatest = chatRequestIdRef.current === requestId;
@@ -180,7 +180,7 @@ const TerminalHero: React.FC<TerminalHeroProps> = ({ isScanning = false }) => {
                           border: '1px solid var(--border)',
                           color: 'var(--text-muted)'
                         }}
-                        aria-label="Open LaPoet chat"
+                        aria-label="Open Kira chat"
                         type="button"
                       >
                         <MessageSquare size={12} style={{ color: 'var(--accent)' }} />
@@ -206,7 +206,7 @@ const TerminalHero: React.FC<TerminalHeroProps> = ({ isScanning = false }) => {
                       <div className="flex items-center gap-2">
                         <MessageSquare size={14} style={{ color: 'var(--accent)' }} />
                         <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                          LaPoet Chat
+                          Kira Chat
                         </span>
                       </div>
                       <button
@@ -262,7 +262,7 @@ const TerminalHero: React.FC<TerminalHeroProps> = ({ isScanning = false }) => {
                           border: '1px solid var(--border)',
                           color: 'var(--text-primary)'
                         }}
-                        placeholder="ASK_LAPOET..."
+                        placeholder="ASK_KIRA..."
                         value={chatInput}
                         onChange={(e) => setChatInput(sanitizeChatMessage(e.target.value))}
                       />

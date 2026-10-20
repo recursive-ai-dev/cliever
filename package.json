@@ -1,7 +1,7 @@
 {
   "name": "cliever",
   "private": true,
-  "version": "2.6.0",
+  "version": "2.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,9 +9,12 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "node scripts/validate-registry.mjs",
+    "test": "node scripts/validate-registry.mjs && npm run kira:check && npm run test:kira && npm run test:unit",
     "test:e2e": "playwright test",
-    "lapoet:train-poems": "node --max-old-space-size=4096 ./scripts/train-lapoet-poems.mjs"
+    "kira:build": "node scripts/build-kira-module.mjs",
+    "kira:check": "node scripts/build-kira-module.mjs --check",
+    "test:unit": "node scripts/run-unit-tests.mjs",
+    "test:kira": "npm --prefix kira run verify"
   },
   "dependencies": {
     "lucide-react": "^0.561.0",

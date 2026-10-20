@@ -1,10 +1,10 @@
 import { Agent, AgentCategory } from '../types';
 import { logger } from './logger';
 import { sanitizeChatMessage, sanitizeDisplayText } from '../utils/sanitization';
-import { UniversalLinguisticEngine } from '../model/lapoet-main/src/UniversalLinguisticEngine.js';
-import { getTrainedLaPoetHints } from './lapoetTrainedService';
-
-const engine = new UniversalLinguisticEngine();
+import { AGENTS } from '../constants';
+import { askKira, isKiraAwaiting } from './kira/kiraService';
+import { findCliHints } from './cliCorpus';
+import { answerRegistryQuery, hasRegistryCue, isConversational } from './registrySkill';
 
 const clampStars = (stars: number | undefined): number => {
   if (typeof stars !== 'number' || !Number.isFinite(stars)) return 0;
@@ -564,6 +564,44 @@ const KNOWLEDGE_BASE = {
   }
 };
 
+const toTitle = (topic: string): string => topic.charAt(0).toUpperCase() + topic.slice(1);
+
+const expertDocument = (topic: string, query: string, body: string, ctx: string, hints = ''): string =>
+  [
+    `## Expert Analysis`,
+    '',
+    `**Topic:** ${toTitle(topic)}`,
+    `**Query:** ${query}`,
+    '',
+    hints ? `${hints}\n\n---\n` : '',
+    body,
+    '',
+    '---',
+    `*Context: ${ctx}*`,
+    '',
+    '**Next Steps:** Explore the registry for relevant tools, or ask a more specific question.'
+  ].join('\n');
+
+const GENERAL_GUIDANCE = [
+  '**General Guidance:**',
+  '1. Start by reviewing the official documentation for the tool in question',
+  '2. Check the GitHub repository for examples and common patterns',
+  '3. Test in a development environment before production deployment',
+  '4. Consider using Docker for isolated testing environments',
+  '',
+  '**Available Resources in Registry:**',
+  '- Browse agents by category to find tools for your use case',
+  '- Use the comparison feature to evaluate multiple options',
+  '- Check community ratings and reviews for real-world feedback'
+].join('\n');
+
+/**
+ * Chat entry point. Routing, in order:
+ *  1. Kira, for conversation (greetings, preferences, memory) or when she is waiting on a clarification.
+ *  2. The registry skill, for find / info / install / compare questions about the 159-tool registry.
+ *  3. The how-to knowledge base, for generic setup and troubleshooting questions.
+ *  4. Kira, as the fallback conversational partner.
+ */
 export const askExpert = async (
   query: string,
   context?: string,
@@ -577,61 +615,41 @@ export const askExpert = async (
   const ctx = context ? sanitizeChatMessage(context) : 'CLI agent registry';
   const q = sanitized.toLowerCase();
 
-  // Optional trained LaPoet layer (runtime-loaded checkpoint + CLI corpora from /public).
-  // Must never break core chat.
-  const trainedHints = await getTrainedLaPoetHints(sanitized, ctx, options);
+  const talkToKira = async (): Promise<string | null> => {
+    try {
+      const reply = await askKira(sanitized, options);
+      return reply.text || null;
+    } catch (error: unknown) {
+      if ((error as Error)?.name === 'AbortError') throw error;
+      logger.error('Kira failed', { error });
+      return null;
+    }
+  };
 
-  // Use the engine to analyze the query structure for validation
-  engine.analyze(sanitized.split(' ')[0] || 'query');
+  const wordCount = q.split(/\s+/).filter(Boolean).length;
+  const awaitingAnswer = wordCount <= 3 && (await isKiraAwaiting());
+  if (awaitingAnswer || (isConversational(q) && !hasRegistryCue(q))) {
+    const reply = await talkToKira();
+    if (reply) return reply;
+  }
 
-  // Match against knowledge base
-  let responseSection = '';
-  let matchedTopic = 'general';
+  const registry = answerRegistryQuery(AGENTS, sanitized, ctx);
+  if (registry) {
+    return expertDocument(registry.topic, sanitized, registry.body, ctx);
+  }
 
   for (const [topic, kb] of Object.entries(KNOWLEDGE_BASE)) {
     if (kb.keywords.some(kw => q.includes(kw))) {
-      responseSection = kb.response(sanitized);
-      matchedTopic = topic;
-      break;
+      const hints = await findCliHints(sanitized, options);
+      const hintBlock = hints.length ? ['### CLI Hints', ...hints.map(h => `- ${h}`)].join('\n') : '';
+      return expertDocument(topic, sanitized, kb.response(sanitized), ctx, hintBlock);
     }
   }
 
-  // Generate contextual guidance if no specific match
-  if (!responseSection) {
-    // Use linguistic analysis for response generation
-    engine.generateStructure();
+  const reply = await talkToKira();
+  if (reply) return reply;
 
-    responseSection = [
-      '**General Guidance:**',
-      '1. Start by reviewing the official documentation for the tool in question',
-      '2. Check the GitHub repository for examples and common patterns',
-      '3. Test in a development environment before production deployment',
-      '4. Consider using Docker for isolated testing environments',
-      '',
-      '**Available Resources in Registry:**',
-      `- Browse agents by category to find tools for your use case`,
-      `- Use the comparison feature to evaluate multiple options`,
-      `- Check community ratings and reviews for real-world feedback`
-    ].join('\n');
-  }
-
-  // Build structured response
-  const response = [
-    `## Expert Analysis`,
-    '',
-    `**Topic:** ${matchedTopic.charAt(0).toUpperCase() + matchedTopic.slice(1)}`,
-    `**Query:** ${sanitized}`,
-    '',
-    trainedHints ? `${trainedHints}\n\n---\n` : '',
-    responseSection,
-    '',
-    '---',
-    `*Context: ${ctx}*`,
-    '',
-    '**Next Steps:** Explore the registry for relevant tools, or ask a more specific question.'
-  ].join('\n');
-
-  return response;
+  return expertDocument('general', sanitized, GENERAL_GUIDANCE, ctx);
 };
 
 /**
