@@ -128,7 +128,7 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({ onSelect }) => {
 
                 <div className="mt-16 text-center">
                     <div className="text-[10px] text-gray-600 font-mono flex items-center justify-center gap-6">
-                        <span>v2.7.0</span>
+                        <span>v2.8.0</span>
                         <span className="w-1 h-1 rounded-full bg-gray-800" />
                         <span>FULLY OFFLINE-CAPABLE</span>
                         <span className="w-1 h-1 rounded-full bg-gray-800" />

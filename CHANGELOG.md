@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.8.0 — 2026-10-20
+
+### Kira knows the app, and can run it
+
+- **Terminology** (`services/appKnowledge.ts`): ask "what is a squad", "what does DEGRADED mean", "what is the circuit breaker", "what does the tui tag mean", "list themes", or just "help". About 30 hand-written entries cover the registry, platform, pages, search, sort, status, sync, verification, comparison, squad / Mission Control, bundle, shell generator, telemetry, themes, reviews and offline behaviour. Entries for every tag, theme and category are generated from the app's own data, so they cannot drift from the UI.
+- **Commands** (`services/appCommands.ts`, `services/appBridge.ts`): chat now drives the real UI. "search for git", "show terminal utilities", "sort by name", "next page", "go to page 3", "clear filters", "open lazygit", "add aider to comparison", "recruit goose", "add ripgrep to my bundle", "open comparison of aider and goose", "open mission control", "take bundle", "open telemetry", "switch to macos", "use the synthwave theme", "sync the registry", "verify the visible agents", "where am I". Replies state what actually happened (result counts, refusals such as "the Comparison Engine needs two tools").
+- **Routing** is now: pending Kira clarification → app commands → conversation → app terminology → registry skill → how-to knowledge base → Kira.
+- Kira's own capabilities text mentions app control (model hash and dialogue assets rebuilt).
+- **Tests:** 18 new unit tests (command parsing and execution against a fake controller, glossary coverage of every tag) and 5 new end-to-end tests that watch the UI change.
+
 ## 2.7.0 — 2026-10-20
 
 ### Chat: LaPoet → Kira

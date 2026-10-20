@@ -16,6 +16,16 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({ className = '' }) => {
     applyTheme(currentTheme);
   }, [currentTheme]);
 
+  // Chat can switch themes ("use the synthwave theme"); keep the selector in step.
+  React.useEffect(() => {
+    const onSetTheme = (event: Event) => {
+      const name = (event as CustomEvent<string>).detail;
+      if (name in THEMES) setCurrentTheme(name as ThemeName);
+    };
+    window.addEventListener('cliever:set-theme', onSetTheme);
+    return () => window.removeEventListener('cliever:set-theme', onSetTheme);
+  }, []);
+
   // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

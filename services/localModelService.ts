@@ -5,6 +5,9 @@ import { AGENTS } from '../constants';
 import { askKira, isKiraAwaiting } from './kira/kiraService';
 import { findCliHints } from './cliCorpus';
 import { answerRegistryQuery, hasRegistryCue, isConversational } from './registrySkill';
+import { answerAppQuestion } from './appKnowledge';
+import { getAppController } from './appBridge';
+import { parseAppCommand, runAppCommand } from './appCommands';
 
 const clampStars = (stars: number | undefined): number => {
   if (typeof stars !== 'number' || !Number.isFinite(stars)) return 0;
@@ -597,10 +600,13 @@ const GENERAL_GUIDANCE = [
 
 /**
  * Chat entry point. Routing, in order:
- *  1. Kira, for conversation (greetings, preferences, memory) or when she is waiting on a clarification.
- *  2. The registry skill, for find / info / install / compare questions about the 159-tool registry.
- *  3. The how-to knowledge base, for generic setup and troubleshooting questions.
- *  4. Kira, as the fallback conversational partner.
+ *  1. Kira, when she is waiting on a clarification answer.
+ *  2. App commands ("search for git", "open comparison", "use synthwave"), executed on the live UI.
+ *  3. Kira, for conversation (greetings, preferences, memory).
+ *  4. App terminology ("what is a squad", "what does the tui tag mean", "help").
+ *  5. The registry skill, for find / info / install / compare questions about the registry.
+ *  6. The how-to knowledge base, for generic setup and troubleshooting questions.
+ *  7. Kira, as the fallback conversational partner.
  */
 export const askExpert = async (
   query: string,
@@ -628,9 +634,26 @@ export const askExpert = async (
 
   const wordCount = q.split(/\s+/).filter(Boolean).length;
   const awaitingAnswer = wordCount <= 3 && (await isKiraAwaiting());
-  if (awaitingAnswer || (isConversational(q) && !hasRegistryCue(q))) {
+  if (awaitingAnswer) {
     const reply = await talkToKira();
     if (reply) return reply;
+  }
+
+  const command = parseAppCommand(sanitized, AGENTS);
+  if (command) {
+    const app = getAppController();
+    if (!app) return 'I can only do that from the registry screen. Pick a platform first, then ask again.';
+    return runAppCommand(command, app, AGENTS).text;
+  }
+
+  if (isConversational(q) && !hasRegistryCue(q)) {
+    const reply = await talkToKira();
+    if (reply) return reply;
+  }
+
+  const appAnswer = answerAppQuestion(AGENTS, sanitized);
+  if (appAnswer) {
+    return expertDocument(appAnswer.topic, sanitized, appAnswer.body, ctx);
   }
 
   const registry = answerRegistryQuery(AGENTS, sanitized, ctx);

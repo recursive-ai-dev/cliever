@@ -29,6 +29,8 @@ import { sanitizeChatMessage, sanitizeSearchQuery, getErrorMessage } from './uti
 
 
 import { agentMatchesQuery } from './utils/search';
+import { registerAppController, SORT_OPTIONS, type AppController, type ListName, type PanelName } from './services/appBridge';
+import { THEMES as THEME_REGISTRY, type ThemeName } from './utils/theme';
 import PlatformSelector from './components/PlatformSelector';
 import { isAgentCompatible, Platform } from './utils/platform';
 
@@ -539,6 +541,118 @@ const App: React.FC = () => {
       setIsGlobalVerifying(false);
     }
   };
+
+  // --- Chat → app bridge -----------------------------------------------------------------
+  // Chat commands ("search for git", "open comparison") drive the app through a controller that
+  // always reads the latest render's state. Multi-step commands read `compareSlots` instead of
+  // React state so each step sees the previous one.
+  const bridgeRef = useRef({
+    agents, globalPlatform, searchQuery, selectedCategory, sortBy, currentPage, totalPages,
+    resultCount: 0, selectedAgent, squad, bundledAgentIds, compareAgentA, compareAgentB,
+    showComparison, showCollab, showTakeBundle, showTelemetry, showCommandGenerator,
+    handleGlobalSync, handleVerifyVisible, handleAgentClick, goToPage, clearFilters,
+  });
+  const compareSlots = useRef<{ a: Agent | null; b: Agent | null }>({ a: null, b: null });
+  useEffect(() => {
+    bridgeRef.current = {
+      agents, globalPlatform, searchQuery, selectedCategory, sortBy, currentPage, totalPages,
+      resultCount: sortedFilteredAgents.length, selectedAgent, squad, bundledAgentIds, compareAgentA, compareAgentB,
+      showComparison, showCollab, showTakeBundle, showTelemetry, showCommandGenerator,
+      handleGlobalSync, handleVerifyVisible, handleAgentClick, goToPage, clearFilters,
+    };
+    compareSlots.current = { a: compareAgentA, b: compareAgentB };
+  });
+
+  useEffect(() => {
+    const latest = () => bridgeRef.current;
+    const find = (id: string): Agent | undefined => latest().agents.find(a => a.id === id);
+    const setSlots = (a: Agent | null, b: Agent | null) => {
+      compareSlots.current = { a, b };
+      setCompareAgentA(a);
+      setCompareAgentB(b);
+    };
+
+    const controller: AppController = {
+      snapshot: () => {
+        const l = latest();
+        const panel: PanelName | 'agentDetail' | null =
+          l.showComparison ? 'comparison' : l.showCollab ? 'missionControl' : l.showTakeBundle ? 'bundle'
+          : l.showTelemetry ? 'telemetry' : l.showCommandGenerator ? 'commandGenerator'
+          : l.selectedAgent ? 'agentDetail' : null;
+        return {
+          platform: l.globalPlatform, search: l.searchQuery, category: l.selectedCategory, sort: l.sortBy,
+          page: l.currentPage, totalPages: l.totalPages, resultCount: l.resultCount, registrySize: l.agents.length,
+          theme: THEME_REGISTRY[getStoredTheme()]?.name ?? 'Default', panel,
+          selectedAgentId: l.selectedAgent?.id ?? null,
+          compare: [compareSlots.current.a, compareSlots.current.b].flatMap(a => (a ? [a.id] : [])),
+          squad: l.squad.map(a => a.id), bundle: l.bundledAgentIds,
+        };
+      },
+      countMatches: ({ search, category }) => latest().agents.filter(a =>
+        agentMatchesQuery(a, search) &&
+        (latest().globalPlatform ? isAgentCompatible(a, latest().globalPlatform as Platform) : true) &&
+        (category === 'All' || a.category === category)
+      ).length,
+      setSearch: query => { setSearchQuery(sanitizeSearchQuery(query)); setCurrentPage(1); },
+      setCategory: category => { setSelectedCategory(category); setCurrentPage(1); },
+      setSort: sort => { if ((SORT_OPTIONS as readonly string[]).includes(sort)) { setSortBy(sort); setCurrentPage(1); } },
+      goToPage: page => latest().goToPage(page),
+      clearFilters: () => latest().clearFilters(),
+      openAgent: id => {
+        const agent = find(id);
+        if (!agent) return false;
+        latest().handleAgentClick(agent);
+        return true;
+      },
+      openPanel: panel => {
+        setSelectedAgent(null);
+        if (panel === 'comparison') setShowComparison(true);
+        else if (panel === 'missionControl') setShowCollab(true);
+        else if (panel === 'bundle') setShowTakeBundle(true);
+        else if (panel === 'telemetry') setShowTelemetry(true);
+        else setShowCommandGenerator(true);
+      },
+      closePanels: () => {
+        setSelectedAgent(null); setShowComparison(false); setShowCollab(false);
+        setShowTakeBundle(false); setShowTelemetry(false); setShowCommandGenerator(false);
+      },
+      setMembership: (list: ListName, id, member) => {
+        const agent = find(id);
+        if (!agent) return;
+        if (list === 'squad') {
+          setSquad(prev => (member ? (prev.some(s => s.id === id) ? prev : [...prev, agent]) : prev.filter(s => s.id !== id)));
+        } else if (list === 'bundle') {
+          setBundledAgentIds(prev => (member ? (prev.includes(id) ? prev : [...prev, id]) : prev.filter(x => x !== id)));
+        } else {
+          const { a, b } = compareSlots.current;
+          if (member) {
+            if (a?.id === id || b?.id === id) return;
+            if (!a) setSlots(agent, b);
+            else if (!b) setSlots(a, agent);
+            else setSlots(b, agent);
+          } else {
+            setSlots(a?.id === id ? null : a, b?.id === id ? null : b);
+          }
+        }
+      },
+      clearList: (list: ListName) => {
+        if (list === 'squad') setSquad([]);
+        else if (list === 'bundle') setBundledAgentIds([]);
+        else setSlots(null, null);
+      },
+      setPlatform: platform => { setGlobalPlatform(platform); setCurrentPage(1); },
+      setTheme: theme => {
+        if (!(theme in THEME_REGISTRY)) return;
+        applyTheme(theme as ThemeName);
+        window.dispatchEvent(new CustomEvent('cliever:set-theme', { detail: theme }));
+      },
+      sync: () => { void latest().handleGlobalSync(); },
+      verify: () => { void latest().handleVerifyVisible(); },
+    };
+
+    registerAppController(controller);
+    return () => registerAppController(null);
+  }, []);
 
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -6,7 +6,7 @@ A production-grade, futuristic web application for discovering and managing CLI 
 
 - **Agent Discovery**: Browse 159 curated CLI AI agents, frameworks, and terminal staples, with star counts, versions, and archive flags refreshed from upstream (see `REGISTRY_METADATA_AS_OF` in `constants.ts`)
 - **Real-time Sync**: Live repository status checking backed by the GitHub API with intelligent rate limiting, ETag conditional requests, circuit breakers, and a deterministic offline fallback
-- **AI-Powered Chat**: Built-in expert system for agent recommendations (offline: Kira for conversation and memory, a deterministic registry skill for find/compare/install questions)
+- **AI-Powered Chat**: Built-in expert system for agent recommendations (offline: Kira for conversation and memory, a deterministic registry skill for find/compare/install questions, an app glossary, and chat commands that drive the UI — try "help")
 - **Comparison Tool**: Side-by-side analysis of different agents
 - **Collaboration Simulator (Mission Control)**: Recruit a squad of agents and preview how they work together
 - **Shell Command Generator**: Natural-language → shell command translation, offline

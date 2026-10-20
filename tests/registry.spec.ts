@@ -166,6 +166,61 @@ test.describe('chat', () => {
   });
 });
 
+test.describe('chat drives the app', () => {
+  const send = async (page: import('@playwright/test').Page, text: string) => {
+    const input = page.getByPlaceholder('QUERY_REGISTRY...');
+    await input.fill(text);
+    await input.press('Enter');
+    await expect(page.getByText(text, { exact: true })).toBeVisible();
+  };
+
+  test.beforeEach(async ({ page }) => {
+    await page.getByRole('button', { name: /Open system chat/i }).click();
+  });
+
+  test('search, sort and clear filters act on the registry', async ({ page }) => {
+    const search = page.getByLabel('Search registry');
+    await send(page, 'search for lazygit');
+    await expect(search).toHaveValue('lazygit');
+    await expect(page.getByText(/Searching the registry for “lazygit”/)).toBeVisible();
+
+    await send(page, 'sort by name');
+    await expect(page.getByLabel('Sort agents')).toHaveValue('Name (A-Z)');
+
+    await send(page, 'clear filters');
+    await expect(search).toHaveValue('');
+  });
+
+  test('the theme changes and the selector follows', async ({ page }) => {
+    const accent = () => page.evaluate(() => document.documentElement.style.getPropertyValue('--accent'));
+    const before = await accent();
+    await send(page, 'use the synthwave theme');
+    await expect(page.getByText(/Theme set to Synthwave/)).toBeVisible();
+    expect(await accent()).not.toBe(before);
+  });
+
+  test('panels open and close from chat', async ({ page }) => {
+    await send(page, 'open mission control');
+    const heading = page.getByRole('heading', { name: 'MISSION CONTROL' });
+    await expect(heading).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(heading).toBeHidden();
+  });
+
+  test('queueing two tools and opening the comparison works end to end', async ({ page }) => {
+    await send(page, 'open comparison');
+    await expect(page.getByText(/needs two tools/)).toBeVisible();
+    await send(page, 'open comparison of lazygit and lazydocker');
+    await expect(page.getByText('AGENT COMPARISON ENGINE')).toBeVisible();
+    await page.getByRole('button', { name: 'Close comparison' }).click();
+  });
+
+  test('app terminology is explained', async ({ page }) => {
+    await send(page, 'what is a squad');
+    await expect(page.getByText(/Recruit to squad/).first()).toBeVisible({ timeout: 15000 });
+  });
+});
+
 test.describe('comparison', () => {
   test('two agents can be queued and analyzed', async ({ page }) => {
     const grid = page.locator('main .grid');
