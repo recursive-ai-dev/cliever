@@ -1,0 +1,27 @@
+{
+  "generator": "npm-to-deb 1.0.1",
+  "createdAt": "2026-10-20T21:29:34.616Z",
+  "mode": "web",
+  "packageName": "cliever",
+  "title": "cliever",
+  "version": "2.6.0",
+  "appId": "local.npm.cliever",
+  "architecture": "x64",
+  "node": "24.22.0",
+  "buildScript": "build",
+  "buildArgs": [],
+  "staticOutput": "dist",
+  "maintainer": "Local Builder <builder@localhost>",
+  "homepage": "https://example.invalid/cliever",
+  "requestedElectron": "latest",
+  "requestedBuilder": "26",
+  "electronVersion": "44.9.2",
+  "builderVersion": "26.15.3",
+  "debian": {
+    "Package": "cliever",
+    "Version": "2.6.0",
+    "Architecture": "amd64"
+  },
+  "file": "cliever_2.6.0_amd64.deb",
+  "sha256": "fdc6686b113a617fe2ce656bf95f705b3215fe021593cbb4390e0b4b90c32989"
+}
